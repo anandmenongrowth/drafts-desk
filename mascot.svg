@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 420" width="512" height="420"><g id="albatross">
+  <!-- far wing shadow -->
+<g transform="rotate(16 220 282)">  <path d="M214 276 C150 236 80 214 22 196 C60 238 130 290 214 318 Z" fill="#CFE6F1"/>  <path d="M220 262 C160 226 90 204 30 190 C34 200 40 208 46 214 C100 244 160 284 222 306 Z" fill="#FFFFFF" stroke="#9CC9DC" stroke-width="3" stroke-linejoin="round"/>  <path d="M30 190 C60 196 92 204 118 214 C96 226 70 224 46 214 C40 208 34 200 30 190 Z" fill="#2F4B5E"/></g>
+<g transform="rotate(-16 292 282)">  <path d="M298 276 C362 236 432 214 490 196 C452 238 382 290 298 318 Z" fill="#CFE6F1"/>  <path d="M292 262 C352 226 422 204 482 190 C478 200 472 208 466 214 C412 244 352 284 290 306 Z" fill="#FFFFFF" stroke="#9CC9DC" stroke-width="3" stroke-linejoin="round"/>  <path d="M482 190 C452 196 420 204 394 214 C416 226 442 224 466 214 C472 208 478 200 482 190 Z" fill="#2F4B5E"/></g>
+  <!-- wings -->
+  <!-- dark wing tips -->
+  <!-- tail + feet -->
+  <path d="M236 340 L256 392 L276 340 Z" fill="#FFFFFF" stroke="#9CC9DC" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M232 380 q-10 10 -24 8 q10 -6 16 -16 Z M280 380 q10 10 24 8 q-10 -6 -16 -16 Z" fill="#FF8A78"/>
+  <!-- body -->
+  <ellipse cx="256" cy="292" rx="52" ry="68" fill="#FFFFFF" stroke="#9CC9DC" stroke-width="3"/>
+  <path d="M222 300 C232 336 280 336 290 300" fill="none" stroke="#DFF1F8" stroke-width="10" stroke-linecap="round"/>
+  <!-- pencil (held in the bill) -->
+  <g transform="translate(346 226) rotate(-4)">
+    <rect x="-86" y="-9" width="22" height="18" rx="4" fill="#9ED8EE" stroke="#5BA9C6" stroke-width="2"/>
+    <rect x="-66" y="-9" width="10" height="18" fill="#C7CED3"/>
+    <rect x="-56" y="-9" width="104" height="18" fill="#FF6F61"/>
+    <rect x="-56" y="-9" width="104" height="5" fill="#FF9486"/>
+    <path d="M48 -9 L78 0 L48 9 Z" fill="#F7DDB8"/>
+    <path d="M68 -3.5 L78 0 L68 3.5 Z" fill="#33414B"/>
+  </g>
+  <!-- head -->
+  <circle cx="256" cy="206" r="48" fill="#FFFFFF" stroke="#9CC9DC" stroke-width="3"/>
+  <!-- bill, hooked, over the pencil -->
+  <path d="M296 198 C318 194 338 200 350 212 C354 218 348 222 343 219 C336 224 318 230 296 228 Z" fill="#F7A18C" stroke="#E27C66" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M300 214 C316 216 330 215 343 218" fill="none" stroke="#E27C66" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- eye + cheek -->
+  <circle cx="276" cy="196" r="9" fill="#2F4B5E"/><circle cx="279" cy="193" r="3" fill="#FFFFFF"/>
+  <ellipse cx="268" cy="222" rx="10" ry="6" fill="#FFB3A5" opacity=".75"/>
+  <!-- brow smudge -->
+  <path d="M262 183 C270 178 282 179 288 184" fill="none" stroke="#9CC9DC" stroke-width="3" stroke-linecap="round"/>
+</g>
+</svg>

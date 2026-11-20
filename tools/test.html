@@ -1,0 +1,19 @@
+<!doctype html><html><body><pre id="o">RUNNING</pre>
+<script src="../core.js"></script>
+<script>
+const DD=window.DD; const out=[];
+function eq(a,b,m){ if(JSON.stringify(a)!==JSON.stringify(b)) out.push('FAIL '+m+' got '+JSON.stringify(a)+' want '+JSON.stringify(b)); }
+eq(DD.ideaId('Tiering is the part people skip!', new Date(2026,10,20,9,5)),'2026-11-20-0905-tiering-is-the-part','id');
+eq(DD.ideaFile(' hi ','none'),'build_on: none\n\nhi\n','file');
+eq(DD.parseIdea('build_on: abc\n\nSome text\nmore'),{buildOn:'abc',body:'Some text\nmore'},'parseIdea');
+const sample='status: ready\nidea: x\nbuild_on: none\ncheck: New angle, new example.\n\n## Variant A\npersona: First-Time Manager\nhook: Pain\nYou got two people and a target.\n\nNobody taught you the rest.\n\n## Variant B\npersona: none\nhook: Question\nWho gets your Monday?\n\n## Editor pass\nChecked em dashes and colons.\n';
+const p=DD.parsePost(sample);
+eq(p.status,'ready','status'); eq(p.variants.length,2,'nvariants'); eq(p.variants[0].hook,'Pain','hook'); eq(p.variants.map(v=>v.id),['A','B'],'variant ids');
+eq(p.variants[0].text,'You got two people and a target.\n\nNobody taught you the rest.','textA'); eq(p.variants[1].text,'Who gets your Monday?','textB'); eq(p.editor.startsWith('Checked'),true,'editor');
+const nm=DD.parsePost('status: needs-more\nidea: t\ncheck: c\nquestion: How many reports?\n');
+eq(nm.status,'needs-more','nm status'); eq(nm.question,'How many reports?','q'); eq(nm.variants.length,0,'nm variants');
+eq(DD.stateOf(null,null),'drafting','s1'); eq(DD.stateOf(p,null),'ready','s2');
+eq(DD.stateOf(p,{action:'revise',handled:false}),'revising','s3'); eq(DD.stateOf(p,{action:'revise',handled:true}),'ready','s4');
+eq(DD.stateOf(p,{action:'posted'}),'posted','s5'); eq(DD.stateOf(nm,null),'needs-more','s6');
+document.getElementById('o').textContent = out.length ? out.join('\n') : 'ALL PASSED';
+</script></body></html>

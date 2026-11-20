@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Drafts Desk</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#BFE3F2">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Drafts Desk">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>
+:root{--coral:#FF6F61;--coral-d:#E4574A;--coral-l:#FFE3DE;--sky:#E9F6FB;--sky2:#BFE3F2;--sky3:#9ED8EE;--ink:#1F3A4A;--muted:#5F7A8A;--line:#D3E8F1;--white:#fff}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--white);color:var(--ink);font-family:Calibri,Carlito,"Segoe UI",system-ui,sans-serif;font-size:18px;line-height:1.4}
+body{min-height:100vh;padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+header{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;background:linear-gradient(var(--sky),var(--sky2));border-bottom:1px solid var(--line)}
+header img{width:54px;height:auto;display:block}
+header h1{font-size:23px;margin:0;font-weight:700;letter-spacing:.2px}
+header .sub{font-size:14px;color:var(--muted);margin-top:-2px}
+header .sp{flex:1}
+header button.ref{background:var(--white);border:1px solid var(--line);color:var(--ink);border-radius:20px;padding:6px 12px;font:inherit;font-size:15px}
+main{padding:16px;max-width:680px;margin:0 auto}
+h2{font-size:20px;margin:18px 0 8px}
+.card{background:var(--white);border:1px solid var(--line);border-radius:18px;padding:14px;margin:0 0 14px;box-shadow:0 2px 10px rgba(110,170,200,.15)}
+.card.soft{background:var(--sky);border-color:var(--sky2);box-shadow:none}
+textarea,select,input{width:100%;font:inherit;font-size:18px;color:var(--ink);background:var(--white);border:1.5px solid var(--sky2);border-radius:14px;padding:12px;outline:none}
+textarea:focus,select:focus,input:focus{border-color:var(--coral)}
+textarea{resize:vertical;min-height:130px}
+label{display:block;font-size:15px;color:var(--muted);margin:12px 0 4px}
+button{font:inherit;cursor:pointer}
+.btn{display:inline-block;background:var(--coral);color:#fff;border:0;border-radius:999px;padding:11px 20px;font-weight:700;font-size:17px}
+.btn:active{background:var(--coral-d)}
+.btn.ghost{background:var(--white);color:var(--ink);border:1.5px solid var(--sky2)}
+.btn.sky{background:var(--sky2);color:var(--ink)}
+.btn.sm{padding:7px 14px;font-size:15px}
+.btn[disabled]{opacity:.5}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{display:inline-block;font-size:13px;font-weight:700;border-radius:999px;padding:3px 10px;background:var(--sky2);color:var(--ink)}
+.chip.ready{background:var(--coral-l);color:var(--coral-d)}
+.chip.posted{background:#D9F2E3;color:#25704A}
+.chip.warn{background:#FFF1CC;color:#8A6200}
+.chip.dim{background:#EEF3F6;color:var(--muted)}
+.muted{color:var(--muted);font-size:15px}
+.var{background:var(--sky);border:1px solid var(--sky2);border-radius:14px;padding:12px;margin:10px 0}
+.var .t{white-space:pre-wrap;margin:8px 0 10px}
+.q{background:var(--coral-l);border-radius:12px;padding:10px 12px;margin:8px 0}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--white);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:6}
+nav button{flex:1;background:none;border:0;padding:6px 2px;color:var(--muted);font-size:14px;position:relative}
+nav button .ic{display:block;font-size:22px;line-height:1.1}
+nav button.on{color:var(--coral-d);font-weight:700}
+nav .badge{position:absolute;top:0;left:56%;background:var(--coral);color:#fff;border-radius:999px;font-size:11px;font-weight:700;padding:1px 6px}
+.empty{text-align:center;padding:26px 10px;color:var(--muted)}
+.empty img{width:120px;opacity:.95}
+.toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;font-size:16px;z-index:9;max-width:90%;text-align:center}
+.item{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)}
+.item:last-child{border-bottom:0}
+.item .tx{flex:1;min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.hello{text-align:center;padding:30px 6px 10px}
+.hello img{width:170px}
+code{background:var(--sky);padding:1px 6px;border-radius:6px;font-size:15px}
+</style>
+</head>
+<body>
+<header>
+  <img src="mascot.png" alt="">
+  <div><h1>Drafts Desk</h1><div class="sub" id="sub">ideas in, posts out</div></div>
+  <div class="sp"></div>
+  <button class="ref" id="refresh" aria-label="Refresh">Refresh</button>
+</header>
+<main id="main"></main>
+<nav id="nav"></nav>
+<div id="toast" class="toast" style="display:none"></div>
+
+<script src="core.js"></script>
+<script>
+const LS = {get(k, d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}}, set(k, v){try{localStorage.setItem(k, JSON.stringify(v))}catch(e){}}, del(k){try{localStorage.removeItem(k)}catch(e){}}};
+const S = {conn: LS.get('dd_conn', null), tab: 'capture', loaded: false, loading: false, ideas: [], posts: {}, decs: {}, decSha: {}, drafts: {}, open: {}, err: ''};
+const API = 'https://api.github.com/repos/';
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $ = id => document.getElementById(id);
+const b64e = s => btoa(unescape(encodeURIComponent(s)));
+
+function toast(m, ms){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(toast._t);toast._t=setTimeout(()=>t.style.display='none',ms||2600)}
+
+/* ---------- GitHub ---------- */
+function gh(path, opt){
+  opt = opt || {};
+  return fetch(API + S.conn.repo + path, {cache:'no-store', ...opt, headers:{Authorization:'Bearer ' + S.conn.token, Accept:'application/vnd.github+json', ...(opt.headers||{})}});
+}
+async function list(dir){
+  const r = await gh('/contents/' + dir);
+  if(r.status === 404) return [];
+  if(!r.ok) throw new Error(dir + ' ' + r.status);
+  const j = await r.json();
+  return Array.isArray(j) ? j.filter(f => f.type === 'file') : [];
+}
+async function raw(path){
+  const r = await gh('/contents/' + path, {headers:{Accept:'application/vnd.github.raw+json'}});
+  if(!r.ok) throw new Error(path + ' ' + r.status);
+  return r.text();
+}
+async function put(path, text, msg){
+  let sha;
+  const r0 = await gh('/contents/' + path);
+  if(r0.ok) sha = (await r0.json()).sha;
+  const body = {message: msg, content: b64e(text)}; if(sha) body.sha = sha;
+  const r = await gh('/contents/' + path, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+  if(!r.ok) throw new Error('save failed ' + r.status);
+}
+async function del(path, msg){
+  const r0 = await gh('/contents/' + path);
+  if(!r0.ok) return;
+  const sha = (await r0.json()).sha;
+  const r = await gh('/contents/' + path, {method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({message: msg, sha})});
+  if(!r.ok) throw new Error('delete failed ' + r.status);
+}
+
+/* ---------- load ---------- */
+async function load(){
+  if(!S.conn || S.loading) return;
+  S.loading = true; S.err = ''; render();
+  try{
+    const [ideas, posts, decs] = await Promise.all([list('ideas'), list('short-posts'), list('decisions')]);
+    const ids = ideas.filter(f => /\.md$/.test(f.name) && f.name !== 'README.md').map(f => f.name.replace(/\.md$/, '')).sort().reverse().slice(0, 40);
+    const postSet = new Set(posts.map(f => f.name.replace(/\.md$/, '')));
+    const decSet = new Set(decs.map(f => f.name.replace(/\.json$/, '')));
+    const [itx, ptx, dtx] = await Promise.all([
+      Promise.all(ids.map(id => raw('ideas/' + id + '.md').catch(() => ''))),
+      Promise.all(ids.map(id => postSet.has(id) ? raw('short-posts/' + id + '.md').catch(() => null) : null)),
+      Promise.all(ids.map(id => decSet.has(id) ? raw('decisions/' + id + '.json').catch(() => null) : null))
+    ]);
+    S.ideas = ids.map((id, i) => ({id, ...DD.parseIdea(itx[i])}));
+    S.posts = {}; S.decs = {};
+    ids.forEach((id, i) => {
+      if(ptx[i]) S.posts[id] = DD.parsePost(ptx[i]);
+      if(dtx[i]){ try{ S.decs[id] = JSON.parse(dtx[i]) }catch(e){} }
+    });
+    S.loaded = true;
+  }catch(e){ S.err = String(e.message || e); }
+  S.loading = false; render();
+}
+const stateOf = id => DD.stateOf(S.posts[id] || null, S.decs[id] || null);
+
+/* ---------- actions ---------- */
+async function saveIdea(){
+  const ta = $('idea'); const text = ta.value.trim();
+  if(!text){ toast('Write or dictate an idea first'); return; }
+  const btn = $('save'); btn.disabled = true; btn.textContent = 'Saving...';
+  try{
+    const id = DD.ideaId(text);
+    await put('ideas/' + id + '.md', DD.ideaFile(text, $('buildon').value), 'idea ' + id);
+    ta.value = ''; LS.del('dd_draft');
+    toast('Saved. Claude is drafting, check Review in a minute or two.', 4200);
+    await load();
+  }catch(e){ toast('Could not save: ' + e.message, 4200); }
+  btn.disabled = false; btn.textContent = 'Save idea';
+}
+async function decide(id, action, extra){
+  try{
+    const dec = Object.assign({action, ts: new Date().toISOString(), handled: false}, extra || {});
+    await put('decisions/' + id + '.json', JSON.stringify(dec, null, 2) + '\n', action + ' ' + id);
+    const msgs = {posted:'Marked as posted. Added to your coverage list shortly.', park:'Parked.', long:'Long article seed created on your laptop folder.', revise:'Sent. Claude is revising.'};
+    toast(msgs[action] || 'Done', 3600);
+    await load();
+  }catch(e){ toast('Could not save: ' + e.message, 4200); }
+}
+async function unpark(id){
+  try{ await del('decisions/' + id + '.json', 'unpark ' + id); toast('Back in Review'); await load(); }
+  catch(e){ toast('Could not undo: ' + e.message, 4200); }
+}
+async function reply(id){
+  const t = ($('reply-' + id).value || '').trim();
+  if(!t){ toast('Type your answer first'); return; }
+  try{
+    const nid = DD.ideaId(t);
+    await put('ideas/' + nid + '.md', DD.ideaFile(t, id), 'idea ' + nid + ' (reply to ' + id + ')');
+    await decide(id, 'park', {note: 'answered in ' + nid});
+  }catch(e){ toast('Could not send: ' + e.message, 4200); }
+}
+async function copy(txt){
+  try{ await navigator.clipboard.writeText(txt); }
+  catch(e){ const a = document.createElement('textarea'); a.value = txt; document.body.appendChild(a); a.select(); try{document.execCommand('copy')}catch(_){} a.remove(); }
+  toast('Copied');
+}
+const askPosted = (id, v) => decide(id, 'posted', {variant: v});
+function toggle(key){ S.open[key] = !S.open[key]; render(); }
+function sendRevise(id){ const n = ($('rev-' + id).value || '').trim(); if(!n){ toast('Tell Claude what to change'); return; } S.open['rev-' + id] = false; decide(id, 'revise', {note: n}); }
+
+/* ---------- views ---------- */
+function chip(st){ const cls = {ready:'ready', posted:'posted', 'needs-more':'warn', repeat:'warn', drafting:'dim', revising:'dim', park:'dim', long:''}[st] || ''; return '<span class="chip ' + cls + '">' + esc(DD.LABEL[st] || st) + '</span>'; }
+const snip = (s, n) => { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1) + '...' : s; };
+
+function vSetup(){
+  const h = new URLSearchParams(location.hash.slice(1));
+  return '<div class="hello"><img src="mascot.png" alt=""><h2 style="margin:6px 0">Hello, writer</h2><div class="muted">Connect this app to your writing repo once and it remembers.</div></div>' +
+    '<div class="card"><label>Repo (owner/name)</label><input id="c-repo" autocapitalize="none" autocorrect="off" value="' + esc(h.get('repo') || '') + '" placeholder="owner/repo">' +
+    '<label>GitHub token (fine-grained, this repo only, Contents read and write)</label><input id="c-token" type="password" autocapitalize="none" autocorrect="off" placeholder="github_pat_...">' +
+    '<p class="muted">The token stays on this phone only. Nothing is sent anywhere except GitHub.</p>' +
+    '<button class="btn" id="connect">Connect</button></div>';
+}
+function vCapture(){
+  const opts = '<option value="none">Nothing, a fresh idea</option>' + S.ideas.slice(0, 15).map(i => '<option value="' + esc(i.id) + '">' + esc(snip(i.body, 46)) + '</option>').join('');
+  const recent = S.ideas.slice(0, 8).map(i => '<div class="item"><div class="tx">' + esc(snip(i.body, 120)) + '</div>' + chip(stateOf(i.id)) + '</div>').join('');
+  return '<div class="card"><label style="margin-top:0">New idea. Type, or tap the microphone on your keyboard and talk.</label>' +
+    '<textarea id="idea" placeholder="What did you notice, learn or get wrong this week? Rough is fine. Include any real number or example."></textarea>' +
+    '<label>Build on an earlier idea (optional)</label><select id="buildon">' + opts + '</select>' +
+    '<div style="margin-top:14px"><button class="btn" id="save">Save idea</button></div></div>' +
+    '<h2>Recent ideas</h2><div class="card">' + (recent || '<div class="empty"><img src="mascot.png" alt=""><div>No ideas yet. The albatross is waiting.</div></div>') + '</div>';
+}
+function vReview(){
+  const act = S.ideas.filter(i => ['ready','needs-more','repeat','revising','drafting'].includes(stateOf(i.id)));
+  if(!act.length) return '<div class="empty"><img src="mascot.png" alt=""><div>Nothing to review right now.<br>Save an idea and it will show up here.</div></div>';
+  return act.map(i => {
+    const id = i.id, st = stateOf(id), p = S.posts[id];
+    let h = '<div class="card"><div class="row" style="justify-content:space-between"><div style="font-weight:700;flex:1;min-width:0">' + esc(snip(i.body, 90)) + '</div>' + chip(st) + '</div>';
+    if(st === 'drafting' || st === 'revising'){
+      h += '<p class="muted">' + (st === 'drafting' ? 'Claude is drafting this one. Tap Refresh in a minute.' : 'Claude is revising. Tap Refresh in a minute.') + '</p></div>'; return h;
+    }
+    if(p.check) h += '<p class="muted" style="margin:6px 0 0"><i>' + esc(p.check) + '</i></p>';
+    if(st === 'needs-more' || st === 'repeat'){
+      if(p.question) h += '<div class="q"><b>Claude asks</b><br>' + esc(p.question) + '</div>';
+      if(p.alt) h += '<div class="q"><b>Another angle</b><br>' + esc(p.alt) + '</div>';
+      h += '<textarea id="reply-' + esc(id) + '" style="min-height:90px" placeholder="Your answer, or a new angle. Typed or dictated."></textarea>' +
+        '<div class="row" style="margin-top:10px"><button class="btn sm" onclick="reply(\'' + esc(id) + '\')">Send answer</button><button class="btn sm ghost" onclick="decide(\'' + esc(id) + '\',\'park\')">Park</button></div></div>';
+      return h;
+    }
+    p.variants.forEach(v => {
+      h += '<div class="var"><div class="row"><b>Variant ' + esc(v.id) + '</b>' + (v.hook ? '<span class="chip">' + esc(v.hook) + '</span>' : '') + (v.persona && v.persona !== 'none' ? '<span class="chip dim">' + esc(snip(v.persona, 30)) + '</span>' : '') + '</div>' +
+        '<div class="t">' + esc(v.text) + '</div>' +
+        '<div class="row"><button class="btn sm" data-copy="' + esc(id) + '|' + esc(v.id) + '">Copy</button><button class="btn sm sky" onclick="askPosted(\'' + esc(id) + '\',\'' + esc(v.id) + '\')">I posted this</button></div></div>';
+    });
+    h += '<div class="row"><button class="btn sm ghost" onclick="toggle(\'rev-' + esc(id) + '\')">Revise</button><button class="btn sm ghost" onclick="decide(\'' + esc(id) + '\',\'park\')">Park</button><button class="btn sm ghost" onclick="decide(\'' + esc(id) + '\',\'long\')">Make it a long article</button></div>';
+    if(S.open['rev-' + id]) h += '<textarea id="rev-' + esc(id) + '" style="min-height:90px;margin-top:10px" placeholder="What should change? e.g. sharper hook, shorter, add my 40% number"></textarea><div style="margin-top:8px"><button class="btn sm" onclick="sendRevise(\'' + esc(id) + '\')">Send to Claude</button></div>';
+    return h + '</div>';
+  }).join('');
+}
+function vLibrary(){
+  const groups = [['posted','Posted'],['park','Parked'],['long','Long article seeds']];
+  let h = '';
+  groups.forEach(([st, title]) => {
+    const rows = S.ideas.filter(i => stateOf(i.id) === st);
+    h += '<h2>' + title + '</h2><div class="card">' + (rows.length ? rows.map(i => '<div class="item"><div class="tx">' + esc(snip(i.body, 110)) + '</div>' + (st === 'park' ? '<button class="btn sm ghost" onclick="unpark(\'' + esc(i.id) + '\')">Bring back</button>' : (S.decs[i.id] && S.decs[i.id].variant ? '<span class="chip">Variant ' + esc(S.decs[i.id].variant) + '</span>' : '')) + '</div>').join('') : '<div class="muted">Nothing here yet.</div>') + '</div>';
+  });
+  return h;
+}
+function vSettings(){
+  return '<div class="card"><b>Connected to</b><div class="muted">' + esc(S.conn.repo) + '</div></div>' +
+    '<div class="card soft"><b>Install on your phone</b><p class="muted" style="margin:6px 0 0">Android Chrome, menu (three dots), Install app. iPhone Safari, Share, Add to Home Screen.</p></div>' +
+    '<div class="card"><button class="btn ghost" id="disc">Disconnect this phone</button></div>';
+}
+
+function render(){
+  const main = $('main'), nav = $('nav');
+  if(!S.conn){ main.innerHTML = vSetup(); nav.style.display = 'none'; $('refresh').style.display = 'none'; $('connect').onclick = connect; return; }
+  nav.style.display = 'flex'; $('refresh').style.display = '';
+  const keep = S.tab === 'capture' && $('idea') ? $('idea').value : (LS.get('dd_draft', ''));
+  const ready = S.ideas.filter(i => ['ready','needs-more','repeat'].includes(stateOf(i.id))).length;
+  $('sub').textContent = S.loading ? 'checking the shore...' : 'ideas in, posts out';
+  let body = '';
+  if(S.err) body += '<div class="card" style="border-color:var(--coral)"><b>Could not load</b><div class="muted">' + esc(S.err) + '</div><div class="muted">Check the repo name and token in Settings.</div></div>';
+  body += ({capture: vCapture, review: vReview, library: vLibrary, settings: vSettings}[S.tab] || vCapture)();
+  main.innerHTML = body;
+  nav.innerHTML = [['capture','&#9998;','Capture'],['review','&#9733;','Review'],['library','&#9776;','Library'],['settings','&#9881;','Settings']].map(([k,ic,l]) =>
+    '<button class="' + (S.tab === k ? 'on' : '') + '" data-tab="' + k + '"><span class="ic">' + ic + '</span>' + l + (k === 'review' && ready ? '<span class="badge">' + ready + '</span>' : '') + '</button>').join('');
+  nav.querySelectorAll('button').forEach(b => b.onclick = () => { S.tab = b.dataset.tab; render(); window.scrollTo(0, 0); });
+  if(S.tab === 'capture'){
+    const ta = $('idea'); if(ta){ ta.value = keep; ta.oninput = () => LS.set('dd_draft', ta.value); $('save').onclick = saveIdea; }
+  }
+  if(S.tab === 'settings' && $('disc')) $('disc').onclick = () => { if(confirm('Disconnect this phone?')){ LS.del('dd_conn'); S.conn = null; S.loaded = false; render(); } };
+  main.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => { const [id, v] = b.dataset.copy.split('|'); const p = S.posts[id]; const vr = p && p.variants.find(x => x.id === v); if(vr) copy(vr.text); });
+}
+
+async function connect(){
+  const repo = $('c-repo').value.trim().replace(/^https?:\/\/github\.com\//, ''), token = $('c-token').value.trim();
+  if(!/^[\w.-]+\/[\w.-]+$/.test(repo) || !token){ toast('Enter the repo as owner/name and your token'); return; }
+  const prev = S.conn; S.conn = {repo, token};
+  const r = await gh('').catch(() => null);
+  if(!r || !r.ok){ S.conn = prev; toast('Could not reach that repo with that token', 4200); return; }
+  LS.set('dd_conn', S.conn); history.replaceState(null, '', location.pathname); S.tab = 'capture'; render(); load();
+}
+
+$('refresh').onclick = () => load();
+document.addEventListener('visibilitychange', () => { if(!document.hidden && S.conn && S.loaded) load(); });
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+render(); if(S.conn) load();
+</script>
+</body>
+</html>
