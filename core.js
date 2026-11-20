@@ -70,6 +70,12 @@
     return String(txt || '').replace(/\r/g, '').split(/^## /m).slice(1).map(b => ({ question: get(b, 'question'), persona: get(b, 'persona'), source: get(b, 'source') })).filter(o => o.question);
   }
 
+  /** scouts/short-topics.md, five topics for a short post */
+  function parseScoutTopics(txt) {
+    const get = (b, k) => { const m = b.match(new RegExp('^' + k + ':\\s*(.*)$', 'm')); return m ? m[1].trim() : ''; };
+    return String(txt || '').replace(/\r/g, '').split(/^## /m).slice(1).map(b => ({ topic: get(b, 'topic'), angle: get(b, 'angle'), persona: get(b, 'persona'), why: get(b, 'why now'), research: get(b, 'research') })).filter(t => t.topic);
+  }
+
   /** first line of review.md, 'verdict: PASS' or 'verdict: FIX' */
   function verdict(txt) {
     const m = String(txt || '').match(/^\s*verdict:\s*([\w-]+)/i);
@@ -100,6 +106,6 @@
   /** what to show for a post's state */
   const POST_STATE = { running: ['Claude is working', 'dim'], waiting: ['Your turn', 'ready'], ready: ['Ready to run', 'ready'], error: ['Needs attention', 'warn'], done: ['Published', 'posted'], queued: ['Sent to Claude', 'dim'], deleting: ['Deleting', 'dim'] };
 
-  const C = { ideaId, ideaFile, parseIdea, parsePost, stateOf, LABEL, slugify, parseTopics, verdict, relTime, stages, POST_STATE };
+  const C = { parseScoutTopics, ideaId, ideaFile, parseIdea, parsePost, stateOf, LABEL, slugify, parseTopics, verdict, relTime, stages, POST_STATE };
   if (typeof module !== 'undefined' && module.exports) module.exports = C; else root.DD = C;
 })(typeof window !== 'undefined' ? window : globalThis);

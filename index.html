@@ -252,7 +252,8 @@ function vCapture(){
   return '<div class="card"><label style="margin-top:0">New idea. Type, or tap the microphone on your keyboard and talk.</label>' +
     '<textarea id="idea" placeholder="What did you notice, learn or get wrong? Rough is fine. You can also tell Claude what to research, for example find what is happening in India."></textarea>' +
     '<label>Build on an earlier short post (optional)</label><select id="buildon">' + opts + '</select>' +
-    '<div style="margin-top:14px"><button class="btn" id="save">Start short post</button></div></div>' +
+    '<div class="row" style="margin-top:14px"><button class="btn" id="save">Start short post</button><button class="btn ghost" onclick="startScout()"' + (scoutBusy() ? ' disabled' : '') + '>' + (scoutBusy() ? 'Finding topics...' : 'Suggest 5 topics') + '</button></div></div>' +
+    vScout() +
     '<h2>Recent short posts</h2><div class="card">' + (recent || '<div class="empty"><img src="mascot.png" alt=""><div>No short posts yet. The albatross is waiting.</div></div>') + '</div>';
 }
 function sortedLib(){ return S.lib.slice().sort((x, y) => String(y.date).localeCompare(String(x.date))); }
@@ -317,7 +318,7 @@ async function connect(){
 $('refresh').onclick = () => load();
 /* Self-update. APP_V must match the shell-vN number in sw.js, both are bumped together on every release.
    If the server has a newer release than the one running, reload so a phone never keeps an old copy. */
-const APP_V = 9;
+const APP_V = 10;
 async function checkUpdate(){
   try{
     const t = await (await fetch('sw.js?x=' + Date.now(), {cache: 'no-store'})).text();

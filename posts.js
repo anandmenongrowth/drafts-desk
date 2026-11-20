@@ -38,7 +38,15 @@ async function loadPosts(){
     const pn = S.pending[k];
     if(Date.now() - pn.t > 240000 || (pn.del && !S.pp[k])) delete S.pending[k];
   });
+  await loadScout();
   if(S.reader && S.reader.type === 'post') await loadFiles(S.reader.slug);
+}
+/** the short-post topic scout is not tied to any post, its state lives in scouts/ */
+async function loadScout(){
+  S.scout = await raw('scouts/short-status.json').then(x => JSON.parse(x)).catch(() => null);
+  S.scoutTopics = S.scout ? await raw('scouts/short-topics.md').catch(() => '') : '';
+  const pn = S.pending['scout-short'];
+  if(pn && S.scout && S.scout.updated !== pn.u) delete S.pending['scout-short'];
 }
 function invalidate(slug){
   Object.keys(S.docs).forEach(k => { if(k.indexOf('drafts/' + slug + '/') === 0) delete S.docs[k]; });
@@ -60,7 +68,7 @@ function pstate(p){
   return (pn && pn.u === p.updated) ? 'queued' : p.state;
 }
 const schip = st => { const [l, c] = DD.POST_STATE[st] || [st, '']; return '<span class="chip ' + c + '">' + esc(l) + '</span>'; };
-const anyRunning = () => Object.values(S.pp || {}).some(p => p.state === 'running') || Object.keys(S.pending).length > 0;
+const anyRunning = () => Object.values(S.pp || {}).some(p => p.state === 'running') || Object.keys(S.pending).length > 0 || !!(S.scout && S.scout.state === 'running');
 const kindOf = p => p.track === 'short' ? 'short' : 'long';
 const needsYou = kind => Object.values(S.pp || {}).filter(p => (!kind || kindOf(p) === kind) && ['waiting', 'ready', 'error'].includes(pstate(p))).length;
 const bufKey = (slug, n) => slug + '|' + n;
@@ -80,7 +88,7 @@ async function sendCmd(slug, action, params, msg){
   try{
     await put(cmdName(slug, action), JSON.stringify({slug, action, params: params || {}, handled: false, ts: new Date().toISOString()}, null, 2) + '\n', action + ' ' + slug);
     const p = S.pp[slug], pr = params || {};
-    S.pending[slug] = {u: p ? p.updated : 'new', t: Date.now(), title: pr.title || '', kind: pr.track === 'short' ? 'short' : 'long', del: action === 'delete'};
+    S.pending[slug] = {u: p ? p.updated : 'new', t: Date.now(), title: pr.title || '', kind: pr.track === 'short' ? 'short' : (pr.kind === 'scout' ? 'scout' : 'long'), del: action === 'delete'};
     S.pollUntil = Date.now() + 150000;
     toast(msg || 'Sent. Claude is on it, you will get a notification.', 4200);
     render();
@@ -126,6 +134,36 @@ function bindPostCards(root){
       openPost(el.dataset.post);
     });
   });
+}
+
+/* ---------- topic scout for short posts ---------- */
+const scoutBusy = () => !!((S.scout && S.scout.state === 'running') || S.pending['scout-short']);
+async function startScout(){
+  if(scoutBusy()){ toast('Claude is already finding topics'); return; }
+  const prev = (S.scout && S.scout.updated) || 'new';
+  const ok = await sendCmd('scout-short', 'scout', {kind: 'scout'}, 'Started. Claude is researching 5 topics, you will get a notification.');
+  if(ok && S.pending['scout-short']){ S.pending['scout-short'].u = prev; render(); }
+}
+function useTopic(i){
+  const tp = DD.parseScoutTopics(S.scoutTopics)[i]; if(!tp) return;
+  const text = tp.topic + '\n\nAngle to consider: ' + tp.angle + '\n\nPlease research: ' + tp.research + '\n\nMy own experience on this: ';
+  const el = $('idea'); if(!el) return;
+  el.value = text; LS.set('dd_draft', text); window.scrollTo(0, 0);
+  el.focus(); try{ el.setSelectionRange(text.length, text.length); }catch(_){}
+  toast('Topic added. Add your own experience, then start.', 3600);
+}
+function vScout(){
+  const sc = S.scout, busy = scoutBusy(), list = DD.parseScoutTopics(S.scoutTopics);
+  let h = '';
+  if(busy) h += '<div class="card soft"><b>Finding topics</b><p class="muted" style="margin:6px 0 0">Claude is researching what is current for your readers. You will get a notification, or tap Refresh in a few minutes.</p></div>';
+  else if(sc && sc.state === 'error') h += '<div class="card" style="border-color:var(--coral)"><b>The topic scout hit a problem</b><p class="muted" style="margin:6px 0 0">' + esc(sc.error || 'Try again.') + '</p></div>';
+  if(!busy && list.length){
+    h += '<div class="row" style="justify-content:space-between;margin-top:6px"><h2 style="margin:6px 0">Topic ideas</h2><span class="tiny">' + esc(sc ? DD.relTime(sc.updated) : '') + '</span></div>' +
+      list.map((x, i) => '<div class="card"><b>' + esc(x.topic) + '</b>' + (x.persona ? '<div class="row" style="margin:6px 0"><span class="chip">' + esc(x.persona) + '</span></div>' : '') +
+        (x.angle ? '<div class="muted"><b>Angle</b> ' + esc(x.angle) + '</div>' : '') + (x.why ? '<div class="tiny" style="margin-top:4px">Why now ' + esc(x.why) + '</div>' : '') +
+        '<div style="margin-top:10px"><button class="btn sm" onclick="useTopic(' + i + ')">Use this topic</button></div></div>').join('');
+  }
+  return h;
 }
 
 /* ---------- starting posts ---------- */
