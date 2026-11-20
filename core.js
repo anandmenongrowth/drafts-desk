@@ -27,7 +27,7 @@
     const parts = t.split(/^## /m);
     const head = parts.shift() || '';
     const get = (blk, k) => { const m = blk.match(new RegExp('^' + k + ':\\s*(.*)$', 'm')); return m ? m[1].trim() : ''; };
-    const out = { status: get(head, 'status') || 'ready', check: get(head, 'check'), question: get(head, 'question'), alt: get(head, 'alternative'), variants: [], editor: '' };
+    const out = { status: get(head, 'status') || 'ready', check: get(head, 'check'), question: get(head, 'question'), alt: get(head, 'alternative'), variants: [], editor: '', sources: '' };
     parts.forEach(p => {
       const title = p.split('\n')[0].trim();
       const body = p.slice(p.indexOf('\n') + 1);
@@ -41,7 +41,8 @@
           if (meta.persona !== undefined && meta.hook !== undefined) break;
         }
         out.variants.push({ id: title.match(/^Variant\s+([AB])/i)[1].toUpperCase(), persona: meta.persona || '', hook: meta.hook || '', text: lines.slice(i).join('\n').trim() });
-      } else if (/^Editor/i.test(title)) out.editor = body.trim();
+      } else if (/^Editor/i.test(title) || /^Self review/i.test(title)) out.editor = body.trim();
+      else if (/^Sources/i.test(title)) out.sources = body.trim();
     });
     return out;
   }
@@ -71,7 +72,7 @@
 
   /** first line of review.md, 'verdict: PASS' or 'verdict: FIX' */
   function verdict(txt) {
-    const m = String(txt || '').match(/^\s*verdict:\s*(\w+)/i);
+    const m = String(txt || '').match(/^\s*verdict:\s*([\w-]+)/i);
     return m ? m[1].toUpperCase() : '';
   }
 
@@ -97,7 +98,7 @@
   }
 
   /** what to show for a post's state */
-  const POST_STATE = { running: ['Claude is working', 'dim'], waiting: ['Your turn', 'ready'], ready: ['Ready to run', 'ready'], error: ['Needs attention', 'warn'], done: ['Published', 'posted'], queued: ['Sent to Claude', 'dim'] };
+  const POST_STATE = { running: ['Claude is working', 'dim'], waiting: ['Your turn', 'ready'], ready: ['Ready to run', 'ready'], error: ['Needs attention', 'warn'], done: ['Published', 'posted'], queued: ['Sent to Claude', 'dim'], deleting: ['Deleting', 'dim'] };
 
   const C = { ideaId, ideaFile, parseIdea, parsePost, stateOf, LABEL, slugify, parseTopics, verdict, relTime, stages, POST_STATE };
   if (typeof module !== 'undefined' && module.exports) module.exports = C; else root.DD = C;
