@@ -1,5 +1,5 @@
 // Minimal service worker: makes the app installable. Network-first so updates always win; cache is only an offline fallback for the app shell.
-const CACHE = 'drafts-desk-shell-v1';
+const CACHE = 'drafts-desk-shell-v2';
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(self.clients.claim()); });
 self.addEventListener('fetch', e => {
