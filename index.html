@@ -62,6 +62,16 @@ nav .badge{position:absolute;top:0;left:56%;background:var(--coral);color:#fff;b
 .item .tx{flex:1;min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .hello{text-align:center;padding:30px 6px 10px}
 .hello img{width:170px}
+.item .tx.full{display:block;overflow:visible}
+.item.tap{cursor:pointer}
+.item.tap:active{background:var(--sky)}
+.lbl{font-size:13px;color:var(--muted);background:var(--sky);border-radius:8px;padding:3px 8px;margin:14px 0 6px;display:inline-block}
+.doc{font-size:17px}
+.doc.pre{white-space:pre-wrap}
+.doc p.md{margin:0 0 12px}
+.doc h2.md,.doc h3.md,.doc h4.md{margin:18px 0 8px;line-height:1.25}
+.doc .li{margin:0 0 8px;padding-left:4px}
+.doc hr{border:0;border-top:1px solid var(--line);margin:16px 0}
 code{background:var(--sky);padding:1px 6px;border-radius:6px;font-size:15px}
 </style>
 </head>
@@ -79,7 +89,7 @@ code{background:var(--sky);padding:1px 6px;border-radius:6px;font-size:15px}
 <script src="core.js"></script>
 <script>
 const LS = {get(k, d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}}, set(k, v){try{localStorage.setItem(k, JSON.stringify(v))}catch(e){}}, del(k){try{localStorage.removeItem(k)}catch(e){}}};
-const S = {conn: LS.get('dd_conn', null), tab: 'capture', loaded: false, loading: false, ideas: [], posts: {}, decs: {}, decSha: {}, drafts: {}, open: {}, err: ''};
+const S = {conn: LS.get('dd_conn', null), tab: 'capture', loaded: false, loading: false, ideas: [], posts: {}, decs: {}, decSha: {}, drafts: {}, open: {}, err: '', stack: [], reader: null, lib: [], docs: {}};
 const API = 'https://api.github.com/repos/';
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const $ = id => document.getElementById(id);
@@ -125,7 +135,8 @@ async function load(){
   if(!S.conn || S.loading) return;
   S.loading = true; S.err = ''; render();
   try{
-    const [ideas, posts, decs] = await Promise.all([list('ideas'), list('short-posts'), list('decisions')]);
+    const [ideas, posts, decs, lib] = await Promise.all([list('ideas'), list('short-posts'), list('decisions'), raw('library.json').then(t => JSON.parse(t)).catch(() => S.lib)]);
+    S.lib = Array.isArray(lib) ? lib : [];
     const ids = ideas.filter(f => /\.md$/.test(f.name) && f.name !== 'README.md').map(f => f.name.replace(/\.md$/, '')).sort().reverse().slice(0, 40);
     const postSet = new Set(posts.map(f => f.name.replace(/\.md$/, '')));
     const decSet = new Set(decs.map(f => f.name.replace(/\.json$/, '')));
@@ -191,6 +202,32 @@ const askPosted = (id, v) => decide(id, 'posted', {variant: v});
 function toggle(key){ S.open[key] = !S.open[key]; render(); }
 function sendRevise(id){ const n = ($('rev-' + id).value || '').trim(); if(!n){ toast('Tell Claude what to change'); return; } S.open['rev-' + id] = false; decide(id, 'revise', {note: n}); }
 
+/* ---------- navigation ---------- */
+function go(tab){ if(tab === S.tab && !S.reader) return; if(!S.reader) S.stack.push(S.tab); if(S.stack.length > 20) S.stack.shift(); S.reader = null; S.tab = tab; render(); window.scrollTo(0, 0); }
+function openReader(r){ S.reader = r; render(); window.scrollTo(0, 0); if(r.type === 'long') loadDoc(r.mode === 'article' ? r.item.files.article : r.item.files.linkedin); }
+function setMode(m){ if(!S.reader) return; S.reader.mode = m; render(); loadDoc(m === 'article' ? S.reader.item.files.article : S.reader.item.files.linkedin); }
+async function loadDoc(path){
+  if(!path || S.docs[path] !== undefined) return;
+  S.docs[path] = null; render();
+  try{ S.docs[path] = await raw(path); }catch(e){ S.docs[path] = 'Could not load this file (' + e.message + ').'; }
+  render();
+}
+function disconnect(){ if(confirm('Disconnect this phone and enter the token again?')){ LS.del('dd_conn'); S.conn = null; S.loaded = false; S.reader = null; S.stack = []; render(); } }
+function mdHtml(t){
+  const inl = x => esc(x).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*([^*\n]+?)\*/g, '$1<i>$2</i>');
+  return String(t || '').replace(/\r/g, '').split(/\n\s*\n/).map(b => {
+    let lines = b.split('\n').map(l => l.replace(/\s+$/, '')).filter(l => l.trim() !== ''), out = '';
+    if(!lines.length) return '';
+    if(/^>>/.test(lines[0])){ out += '<div class="lbl">' + esc(lines[0].replace(/^>>\s*/, '')) + '</div>'; lines = lines.slice(1); }
+    if(!lines.length) return out;
+    if(/^-{5,}$/.test(lines[0].trim())) return out + '<hr>';
+    const h = lines[0].match(/^(#{1,3})\s+(.*)$/);
+    if(h){ out += '<h' + (h[1].length + 1) + ' class="md">' + inl(h[2]) + '</h' + (h[1].length + 1) + '>'; lines = lines.slice(1); if(!lines.length) return out; }
+    if(lines.every(l => /^(\s*[-*]|\s*\d+\.)\s+/.test(l))) return out + lines.map(l => '<div class="li">' + inl(l.trim()) + '</div>').join('');
+    return out + '<p class="md">' + inl(lines.join(' ')) + '</p>';
+  }).join('');
+}
+
 /* ---------- views ---------- */
 function chip(st){ const cls = {ready:'ready', posted:'posted', 'needs-more':'warn', repeat:'warn', drafting:'dim', revising:'dim', park:'dim', long:''}[st] || ''; return '<span class="chip ' + cls + '">' + esc(DD.LABEL[st] || st) + '</span>'; }
 const snip = (s, n) => { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1) + '...' : s; };
@@ -239,40 +276,66 @@ function vReview(){
     return h + '</div>';
   }).join('');
 }
+function sortedLib(){ return S.lib.slice().sort((a, b) => String(b.date).localeCompare(String(a.date))); }
 function vLibrary(){
-  const groups = [['posted','Posted'],['park','Parked'],['long','Long article seeds']];
-  let h = '';
+  let h = '<h2>Long articles</h2><div class="card">';
+  const lib = sortedLib();
+  h += lib.length ? lib.map((it, i) => '<div class="item tap" data-lib="' + i + '"><div class="tx full"><b>' + esc(it.title) + '</b><div class="muted">' + esc(it.date) + ' &middot; ' + esc(it.track) + ' &middot; with LinkedIn version</div></div><span class="chip">Open</span></div>').join('') : '<div class="muted">No published articles listed yet.</div>';
+  h += '</div>';
+  const groups = [['posted', 'Short posts you posted'], ['park', 'Parked ideas'], ['long', 'Long article seeds']];
   groups.forEach(([st, title]) => {
     const rows = S.ideas.filter(i => stateOf(i.id) === st);
-    h += '<h2>' + title + '</h2><div class="card">' + (rows.length ? rows.map(i => '<div class="item"><div class="tx">' + esc(snip(i.body, 110)) + '</div>' + (st === 'park' ? '<button class="btn sm ghost" onclick="unpark(\'' + esc(i.id) + '\')">Bring back</button>' : (S.decs[i.id] && S.decs[i.id].variant ? '<span class="chip">Variant ' + esc(S.decs[i.id].variant) + '</span>' : '')) + '</div>').join('') : '<div class="muted">Nothing here yet.</div>') + '</div>';
+    h += '<h2>' + title + '</h2><div class="card">' + (rows.length ? rows.map(i => {
+      const d = S.decs[i.id] || {};
+      const tap = (st === 'posted' && S.posts[i.id]) ? ' tap" data-short="' + esc(i.id) : '';
+      return '<div class="item' + tap + '"><div class="tx">' + esc(snip(i.body, 110)) + '</div>' + (st === 'park' ? '<button class="btn sm ghost" onclick="unpark(\'' + esc(i.id) + '\')">Bring back</button>' : (d.variant ? '<span class="chip">Variant ' + esc(d.variant) + '</span>' : '')) + '</div>';
+    }).join('') : '<div class="muted">Nothing here yet.</div>') + '</div>';
   });
   return h;
 }
-function vSettings(){
-  return '<div class="card"><b>Connected to</b><div class="muted">' + esc(S.conn.repo) + '</div></div>' +
-    '<div class="card soft"><b>Install on your phone</b><p class="muted" style="margin:6px 0 0">Android Chrome, menu (three dots), Install app. iPhone Safari, Share, Add to Home Screen.</p></div>' +
-    '<div class="card"><button class="btn ghost" id="disc">Disconnect this phone</button></div>';
+function vReader(){
+  const r = S.reader;
+  let h = '<div class="row" style="margin-bottom:10px"><button class="btn sm ghost" onclick="history.back()">&larr; Back</button></div>';
+  if(r.type === 'short'){
+    const i = S.ideas.find(x => x.id === r.id), p = S.posts[r.id], d = S.decs[r.id] || {};
+    const v = p && (p.variants.find(x => x.id === d.variant) || p.variants[0]);
+    h += '<div class="card"><h2 style="margin-top:0">Short post</h2><div class="muted">' + esc(snip(i ? i.body : '', 140)) + '</div>' +
+      (v ? '<div class="var"><div class="row"><b>Variant ' + esc(v.id) + '</b>' + (v.hook ? '<span class="chip">' + esc(v.hook) + '</span>' : '') + '</div><div class="t">' + esc(v.text) + '</div><button class="btn sm" data-copytext="short">Copy</button></div>' : '<p class="muted">The draft text is not available.</p>') + '</div>';
+    return h;
+  }
+  const it = r.item, path = r.mode === 'article' ? it.files.article : it.files.linkedin, doc = S.docs[path];
+  h += '<div class="card"><h2 style="margin-top:0">' + esc(it.title) + '</h2><div class="muted">' + esc(it.date) + ' &middot; ' + esc(it.track) + '</div>' +
+    '<div class="row" style="margin:12px 0"><button class="btn sm ' + (r.mode === 'linkedin' ? '' : 'ghost') + '" onclick="setMode(\'linkedin\')">LinkedIn version</button><button class="btn sm ' + (r.mode === 'article' ? '' : 'ghost') + '" onclick="setMode(\'article\')">Full article</button></div>' +
+    '<div class="row" style="margin-bottom:12px"><button class="btn sm sky" data-copytext="doc">Copy text</button>' + (it.url ? '<a class="btn sm ghost" style="text-decoration:none" target="_blank" rel="noopener" href="' + esc(it.url) + '">Open on Substack</a>' : '') + '</div>' +
+    (doc == null ? '<p class="muted">Loading...</p>' : (r.mode === 'article' ? '<div class="doc">' + mdHtml(doc) + '</div>' : '<div class="doc pre">' + esc(doc) + '</div>')) + '</div>';
+  return h;
 }
 
 function render(){
   const main = $('main'), nav = $('nav');
   if(!S.conn){ main.innerHTML = vSetup(); nav.style.display = 'none'; $('refresh').style.display = 'none'; $('connect').onclick = connect; return; }
   nav.style.display = 'flex'; $('refresh').style.display = '';
-  const keep = S.tab === 'capture' && $('idea') ? $('idea').value : (LS.get('dd_draft', ''));
+  const keep = S.tab === 'capture' && !S.reader && $('idea') ? $('idea').value : (LS.get('dd_draft', ''));
   const ready = S.ideas.filter(i => ['ready','needs-more','repeat'].includes(stateOf(i.id))).length;
   $('sub').textContent = S.loading ? 'checking the shore...' : 'ideas in, posts out';
   let body = '';
-  if(S.err) body += '<div class="card" style="border-color:var(--coral)"><b>Could not load</b><div class="muted">' + esc(S.err) + '</div><div class="muted">Check the repo name and token in Settings.</div></div>';
-  body += ({capture: vCapture, review: vReview, library: vLibrary, settings: vSettings}[S.tab] || vCapture)();
+  if(S.err) body += '<div class="card" style="border-color:var(--coral)"><b>Could not load</b><div class="muted">' + esc(S.err) + '</div><div class="row" style="margin-top:10px"><button class="btn sm" onclick="load()">Try again</button><button class="btn sm ghost" onclick="disconnect()">Reconnect this phone</button></div></div>';
+  body += S.reader ? vReader() : ({capture: vCapture, review: vReview, library: vLibrary}[S.tab] || vCapture)();
   main.innerHTML = body;
-  nav.innerHTML = [['capture','&#9998;','Capture'],['review','&#9733;','Review'],['library','&#9776;','Library'],['settings','&#9881;','Settings']].map(([k,ic,l]) =>
-    '<button class="' + (S.tab === k ? 'on' : '') + '" data-tab="' + k + '"><span class="ic">' + ic + '</span>' + l + (k === 'review' && ready ? '<span class="badge">' + ready + '</span>' : '') + '</button>').join('');
-  nav.querySelectorAll('button').forEach(b => b.onclick = () => { S.tab = b.dataset.tab; render(); window.scrollTo(0, 0); });
-  if(S.tab === 'capture'){
+  nav.innerHTML = [['capture','&#9998;','Capture'],['review','&#9733;','Review'],['library','&#9776;','Library']].map(([k,ic,l]) =>
+    '<button class="' + (S.tab === k && !S.reader ? 'on' : '') + '" data-tab="' + k + '"><span class="ic">' + ic + '</span>' + l + (k === 'review' && ready ? '<span class="badge">' + ready + '</span>' : '') + '</button>').join('');
+  nav.querySelectorAll('button').forEach(b => b.onclick = () => go(b.dataset.tab));
+  if(S.tab === 'capture' && !S.reader){
     const ta = $('idea'); if(ta){ ta.value = keep; ta.oninput = () => LS.set('dd_draft', ta.value); $('save').onclick = saveIdea; }
   }
-  if(S.tab === 'settings' && $('disc')) $('disc').onclick = () => { if(confirm('Disconnect this phone?')){ LS.del('dd_conn'); S.conn = null; S.loaded = false; render(); } };
   main.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => { const [id, v] = b.dataset.copy.split('|'); const p = S.posts[id]; const vr = p && p.variants.find(x => x.id === v); if(vr) copy(vr.text); });
+  main.querySelectorAll('[data-lib]').forEach(b => b.onclick = () => openReader({type: 'long', item: sortedLib()[+b.dataset.lib], mode: 'linkedin'}));
+  main.querySelectorAll('[data-short]').forEach(b => b.onclick = () => openReader({type: 'short', id: b.dataset.short}));
+  main.querySelectorAll('[data-copytext]').forEach(b => b.onclick = () => {
+    const r = S.reader; if(!r) return;
+    if(r.type === 'short'){ const p = S.posts[r.id], d = S.decs[r.id] || {}; const v = p && (p.variants.find(x => x.id === d.variant) || p.variants[0]); if(v) copy(v.text); }
+    else { const t = S.docs[r.mode === 'article' ? r.item.files.article : r.item.files.linkedin]; if(t) copy(t); }
+  });
 }
 
 async function connect(){
@@ -281,12 +344,24 @@ async function connect(){
   const prev = S.conn; S.conn = {repo, token};
   const r = await gh('').catch(() => null);
   if(!r || !r.ok){ S.conn = prev; toast('Could not reach that repo with that token', 4200); return; }
-  LS.set('dd_conn', S.conn); history.replaceState(null, '', location.pathname); S.tab = 'capture'; render(); load();
+  LS.set('dd_conn', S.conn); history.replaceState(null, '', location.pathname); S.tab = 'capture'; S.stack = []; S.reader = null; render(); load();
 }
 
 $('refresh').onclick = () => load();
 document.addEventListener('visibilitychange', () => { if(!document.hidden && S.conn && S.loaded) load(); });
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+/* ---- back button: one step at a time (reader > previous tab > Capture); double press on Capture exits ---- */
+let exitAt = 0;
+try{ history.replaceState({s:0}, ''); history.pushState({s:1}, ''); }catch(e){}
+window.addEventListener('popstate', () => {
+  const rearm = () => { try{ history.pushState({s:1}, ''); }catch(e){} };
+  if(S.reader){ S.reader = null; render(); return rearm(); }
+  if(S.stack.length){ S.tab = S.stack.pop(); render(); return rearm(); }
+  if(S.conn && S.tab !== 'capture'){ S.tab = 'capture'; render(); return rearm(); }
+  const now = Date.now();
+  if(now - exitAt < 2200){ history.back(); return; }
+  exitAt = now; toast('Press back again to exit'); rearm();
+});
 render(); if(S.conn) load();
 </script>
 </body>
