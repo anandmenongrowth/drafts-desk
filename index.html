@@ -315,7 +315,18 @@ async function connect(){
 }
 
 $('refresh').onclick = () => load();
-document.addEventListener('visibilitychange', () => { if(!document.hidden && S.conn && S.loaded) load(); });
+/* Self-update. APP_V must match the shell-vN number in sw.js, both are bumped together on every release.
+   If the server has a newer release than the one running, reload so a phone never keeps an old copy. */
+const APP_V = 9;
+async function checkUpdate(){
+  try{
+    const t = await (await fetch('sw.js?x=' + Date.now(), {cache: 'no-store'})).text();
+    const m = t.match(/shell-v(\d+)/);
+    if(m && +m[1] > APP_V){ toast('Updating the app...', 1500); setTimeout(() => location.reload(), 700); }
+  }catch(e){}
+}
+document.addEventListener('visibilitychange', () => { if(!document.hidden){ checkUpdate(); if(S.conn && S.loaded) load(); } });
+checkUpdate(); setInterval(checkUpdate, 300000);
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 /* ---- back button: one step at a time (reader > previous tab > Capture); double press on Capture exits ---- */
 let exitAt = 0;
