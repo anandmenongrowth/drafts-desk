@@ -97,12 +97,12 @@ async function redoStep(slug, step, label){
 async function completeStep(slug, params, msg){ await sendCmd(slug, 'complete', params || {}, msg || 'Done. Moving to the next step.'); }
 
 /* ---------- delete (long press on a card, or the button inside a post) ---------- */
-function confirmDelete(slug){
+async function confirmDelete(slug){
   const p = S.pp[slug]; if(!p) return;
   if(S.askDel && Date.now() - S.askDel < 2500) return;
   S.askDel = Date.now();
   if(p.state === 'done'){ toast('Published posts cannot be deleted here'); return; }
-  if(confirm('Delete "' + snip(p.title || slug, 60) + '"?\n\nThis removes the draft and all its files. It cannot be undone.')) doDelete(slug);
+  if(await askConfirm('Delete "' + snip(p.title || slug, 60) + '"?\n\nThis removes the draft and all its files. It cannot be undone.', 'Delete')) doDelete(slug);
 }
 async function doDelete(slug){
   const ok = await sendCmd(slug, 'delete', {}, 'Deleting...');
@@ -372,9 +372,9 @@ async function recheck(slug){
     await sendCmd(slug, 'redo', {step: 'check', note: ''}, 'Sent. Claude is checking your updated idea.');
   }catch(e){ toast('Could not save: ' + e.message, 4200); }
 }
-function confirmRedoDraft(slug){
+async function confirmRedoDraft(slug){
   if(!noteOf(slug)){ toast('Say what to change first'); return; }
-  if(confirm('This replaces the current draft, including any edits you made. Continue?')) redoStep(slug, 'draft', 'Sent. Claude is redrafting.');
+  if(await askConfirm('This replaces the current draft, including any edits you made. Continue?', 'Replace it')) redoStep(slug, 'draft', 'Sent. Claude is redrafting.');
 }
 async function confirmImage(slug){ const n = noteOf(slug); delete S.buf[bufKey(slug, 'note')]; await completeStep(slug, {note: n}, 'Concept confirmed. Claude is writing the prompt.'); }
 async function copyFile(slug, f){ const path = 'drafts/' + slug + '/_source/' + f; await ensureDoc(path, false); const t = S.docs[path]; if(t) copy(t); else toast('Still loading, tap again'); }

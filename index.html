@@ -96,6 +96,10 @@ textarea.big{min-height:46vh}
 .fold.open .less{display:none}
 .fold .less{color:var(--muted);margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .tiny{font-size:13px;color:var(--muted)}
+.dlg{position:fixed;inset:0;background:rgba(31,58,74,.45);z-index:20;align-items:center;justify-content:center;padding:20px}
+.dlgbox{background:var(--white);border-radius:20px;padding:20px;max-width:380px;width:100%;box-shadow:0 10px 40px rgba(31,58,74,.3)}
+#dlgmsg{white-space:pre-line;font-size:17px;line-height:1.45}
+body:has(#dlg[style*="flex"]) .btn{pointer-events:auto;opacity:1}
 code{background:var(--sky);padding:1px 6px;border-radius:6px;font-size:15px}
 </style>
 </head>
@@ -109,6 +113,7 @@ code{background:var(--sky);padding:1px 6px;border-radius:6px;font-size:15px}
 <main id="main"></main>
 <nav id="nav"></nav>
 <div id="toast" class="toast" style="display:none"></div>
+<div id="dlg" class="dlg" style="display:none"><div class="dlgbox"><div id="dlgmsg"></div><div class="row" style="margin-top:16px;justify-content:flex-end"><button class="btn ghost" id="dlgno">Cancel</button><button class="btn" id="dlgok">OK</button></div></div></div>
 
 <script src="core.js"></script>
 <script src="posts.js"></script>
@@ -120,6 +125,17 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp
 const $ = id => document.getElementById(id);
 const b64e = s => btoa(unescape(encodeURIComponent(s)));
 
+/** The app's own confirm dialog. The browser's confirm() always prints the site address above the message, this does not. */
+function askConfirm(msg, okLabel){
+  return new Promise(res => {
+    const d = $('dlg'); $('dlgmsg').textContent = msg; $('dlgok').textContent = okLabel || 'OK';
+    d.style.display = 'flex';
+    const done = v => { d.style.display = 'none'; S.dlgCancel = null; res(v); };
+    S.dlgCancel = () => done(false);
+    $('dlgok').onclick = () => done(true); $('dlgno').onclick = () => done(false);
+    d.onclick = e => { if(e.target === d) done(false); };
+  });
+}
 function toast(m, ms){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(toast._t);toast._t=setTimeout(()=>t.style.display='none',ms||2600)}
 
 /* ---------- GitHub ---------- */
@@ -202,7 +218,7 @@ async function loadDoc(path){
   try{ S.docs[path] = await raw(path); }catch(e){ S.docs[path] = 'Could not load this file (' + e.message + ').'; }
   render();
 }
-function disconnect(){ if(confirm('Disconnect this phone and enter the token again?')){ LS.del('dd_conn'); S.conn = null; S.loaded = false; S.reader = null; S.stack = []; render(); } }
+async function disconnect(){ if(await askConfirm('Disconnect this phone and enter the token again?', 'Disconnect')){ LS.del('dd_conn'); S.conn = null; S.loaded = false; S.reader = null; S.stack = []; render(); } }
 function mdHtml(t){
   const inl = x => esc(x).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*([^*\n]+?)\*/g, '$1<i>$2</i>');
   return String(t || '').replace(/\r/g, '').split(/\n\s*\n/).map(b => {
@@ -307,6 +323,7 @@ let exitAt = 0;
 try{ history.replaceState({s:0}, ''); history.pushState({s:1}, ''); }catch(e){}
 window.addEventListener('popstate', () => {
   const rearm = () => { try{ history.pushState({s:1}, ''); }catch(e){} };
+  if(S.dlgCancel){ S.dlgCancel(); return rearm(); }
   if(S.reader){
     if(S.reader.type === 'post' && S.reader.file){ S.reader.file = null; S.reader.edit = false; render(); return rearm(); }
     S.reader = null; render(); return rearm();
