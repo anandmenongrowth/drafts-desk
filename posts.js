@@ -101,6 +101,7 @@ async function startPost(){
   const n = S.newPost, track = n.track, scout = track === 'business' && n.mode === 'scout';
   const title = (S.buf['new|title'] || '').trim(), seed = (S.buf['new|seed'] || '').trim(), persona = (S.buf['new|persona'] || '').trim();
   if(!scout && !title){ toast('Add a topic or working title'); return; }
+  if(Object.values(S.pending).some(x => x.u === 'new' && (x.title || '') === (scout ? '' : title))){ toast('That post is already being started'); return; }
   let slug = DD.slugify(scout ? 'new post topic scout' : title), k = 2;
   while(S.pp[slug] || S.pending[slug]) slug = DD.slugify(scout ? 'new post topic scout' : title) + '-' + (k++);
   const ok = await sendCmd(slug, 'start', {track, mode: scout ? 'scout' : 'topic', title: scout ? '' : title, topic: title, seed, persona}, scout ? 'Started. Claude is researching topics.' : 'Started. Add your raw material next.');

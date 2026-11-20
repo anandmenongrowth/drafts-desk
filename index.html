@@ -39,6 +39,7 @@ button{font:inherit;cursor:pointer}
 .btn.sky{background:var(--sky2);color:var(--ink)}
 .btn.sm{padding:7px 14px;font-size:15px}
 .btn[disabled]{opacity:.5}
+body.busy .btn{opacity:.55;pointer-events:none}
 .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .chip{display:inline-block;font-size:13px;font-weight:700;border-radius:999px;padding:3px 10px;background:var(--sky2);color:var(--ink)}
 .chip.ready{background:var(--coral-l);color:var(--coral-d)}
@@ -106,7 +107,7 @@ code{background:var(--sky);padding:1px 6px;border-radius:6px;font-size:15px}
 <script src="posts.js"></script>
 <script>
 const LS = {get(k, d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}}, set(k, v){try{localStorage.setItem(k, JSON.stringify(v))}catch(e){}}, del(k){try{localStorage.removeItem(k)}catch(e){}}};
-const S = {conn: LS.get('dd_conn', null), tab: 'capture', loaded: false, loading: false, ideas: [], posts: {}, decs: {}, decSha: {}, drafts: {}, open: {}, err: '', stack: [], reader: null, lib: [], docs: {}, pp: {}, pending: {}, files: {}, buf: {}, pipe: null, newPost: null, pollUntil: 0};
+const S = {conn: LS.get('dd_conn', null), tab: 'capture', loaded: false, loading: false, ideas: [], posts: {}, decs: {}, decSha: {}, drafts: {}, open: {}, err: '', stack: [], reader: null, lib: [], docs: {}, pp: {}, pending: {}, savedAt: {}, files: {}, buf: {}, pipe: null, newPost: null, pollUntil: 0};
 const API = 'https://api.github.com/repos/';
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const $ = id => document.getElementById(id);
@@ -115,10 +116,28 @@ const b64e = s => btoa(unescape(encodeURIComponent(s)));
 function toast(m, ms){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(toast._t);toast._t=setTimeout(()=>t.style.display='none',ms||2600)}
 
 /* ---------- GitHub ---------- */
+let inflight = 0, busyUntil = 0;
+function maybeIdle(){
+  if(inflight > 0) return;
+  const w = busyUntil - Date.now();
+  if(w > 0) setTimeout(maybeIdle, w + 20); else document.body.classList.remove('busy');
+}
 function gh(path, opt){
   opt = opt || {};
-  return fetch(API + S.conn.repo + path, {cache:'no-store', ...opt, headers:{Authorization:'Bearer ' + S.conn.token, Accept:'application/vnd.github+json', ...(opt.headers||{})}});
+  const write = opt.method === 'PUT' || opt.method === 'DELETE';
+  if(write){ inflight++; document.body.classList.add('busy'); }
+  const done = () => { if(write){ inflight--; maybeIdle(); } };
+  return fetch(API + S.conn.repo + path, {cache:'no-store', ...opt, headers:{Authorization:'Bearer ' + S.conn.token, Accept:'application/vnd.github+json', ...(opt.headers||{})}}).then(r => { done(); return r; }, e => { done(); throw e; });
 }
+/* One tap at a time (same idea as Inflekt OS). The first tap on any button locks every button until its work has
+   finished and at least 0.7s has passed, so a double tap or a nervous second tap can never run an action twice. */
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('button.btn, a.btn');
+  if(!b) return;
+  if(document.body.classList.contains('busy')){ e.preventDefault(); e.stopImmediatePropagation(); return; }
+  document.body.classList.add('busy'); busyUntil = Date.now() + 700;
+  setTimeout(maybeIdle, 720);
+}, true);
 async function list(dir){
   const r = await gh('/contents/' + encodeURI(dir));
   if(r.status === 404) return [];
@@ -179,9 +198,12 @@ const stateOf = id => DD.stateOf(S.posts[id] || null, S.decs[id] || null);
 async function saveIdea(){
   const ta = $('idea'); const text = ta.value.trim();
   if(!text){ toast('Write or dictate an idea first'); return; }
+  const same = S.ideas.find(i => i.body.trim() === text && Date.now() - (S.savedAt[i.id] || 0) < 600000);
+  if(same){ $('idea').value = ''; LS.del('dd_draft'); toast('That idea is already saved'); return; }
   const btn = $('save'); btn.disabled = true; btn.textContent = 'Saving...';
   try{
     const id = DD.ideaId(text);
+    S.savedAt[id] = Date.now();
     await put('ideas/' + id + '.md', DD.ideaFile(text, $('buildon').value), 'idea ' + id);
     ta.value = ''; LS.del('dd_draft');
     toast('Saved. Claude is drafting, check Review in a minute or two.', 4200);
