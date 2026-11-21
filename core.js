@@ -70,6 +70,21 @@
     return String(txt || '').replace(/\r/g, '').split(/^## /m).slice(1).map(b => ({ question: get(b, 'question'), persona: get(b, 'persona'), source: get(b, 'source') })).filter(o => o.question);
   }
 
+  /** the bullet list at the top of research.md, one string per direction */
+  function parseDirections(md) {
+    const chunk = String(md || '').replace(/\r/g, '').split(/^## /m).find(b => /^Directions you can take/i.test(b));
+    if (!chunk) return [];
+    return chunk.split('\n').slice(1).filter(l => /^\s*-\s+/.test(l)).map(l => l.replace(/^\s*-\s+/, '').trim()).filter(Boolean);
+  }
+
+  /** length of a LinkedIn post against the limits in pipeline.json, {chars, words, level ok|warn|bad} */
+  function lengthInfo(text, limits) {
+    const t = String(text || '').trim();
+    const lim = limits || { linkedin_target_chars: 1300, linkedin_max_chars: 1500, linkedin_hard_chars: 3000 };
+    const chars = t.length, words = t ? t.split(/\s+/).length : 0;
+    return { chars, words, level: chars <= lim.linkedin_target_chars ? 'ok' : chars <= lim.linkedin_max_chars ? 'warn' : 'bad', lim };
+  }
+
   /** scouts/short-topics.md, five topics for a short post */
   function parseScoutTopics(txt) {
     const get = (b, k) => { const m = b.match(new RegExp('^' + k + ':\\s*(.*)$', 'm')); return m ? m[1].trim() : ''; };
@@ -106,6 +121,6 @@
   /** what to show for a post's state */
   const POST_STATE = { running: ['Claude is working', 'dim'], waiting: ['Your turn', 'ready'], ready: ['Ready to run', 'ready'], error: ['Needs attention', 'warn'], done: ['Published', 'posted'], queued: ['Sent to Claude', 'dim'], deleting: ['Deleting', 'dim'] };
 
-  const C = { parseScoutTopics, ideaId, ideaFile, parseIdea, parsePost, stateOf, LABEL, slugify, parseTopics, verdict, relTime, stages, POST_STATE };
+  const C = { parseDirections, lengthInfo, parseScoutTopics, ideaId, ideaFile, parseIdea, parsePost, stateOf, LABEL, slugify, parseTopics, verdict, relTime, stages, POST_STATE };
   if (typeof module !== 'undefined' && module.exports) module.exports = C; else root.DD = C;
 })(typeof window !== 'undefined' ? window : globalThis);

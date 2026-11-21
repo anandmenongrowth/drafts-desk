@@ -90,6 +90,10 @@ textarea.big{min-height:46vh}
 .doc .li{margin:0 0 8px;padding-left:4px}
 .doc hr{border:0;border-top:1px solid var(--line);margin:16px 0}
 .card.tap,.item.tap{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.cnt{display:inline-block;font-size:13px;border-radius:999px;padding:3px 10px;background:#D9F2E3;color:#25704A}
+.cnt.warn{background:#FFF1CC;color:#8A6200}
+.cnt.bad{background:var(--coral-l);color:var(--coral-d)}
+.counter{margin-top:6px}
 .fold{cursor:pointer}
 .fold .more{display:none;white-space:pre-wrap;margin-top:6px}
 .fold.open .more{display:block}
@@ -248,7 +252,7 @@ function vSetup(){
 function vCapture(){
   const shorts = Object.values(S.pp).filter(p => p.track === 'short').sort((a, b) => String(b.updated).localeCompare(String(a.updated)));
   const opts = '<option value="none">Nothing, a fresh idea</option>' + shorts.slice(0, 15).map(p => '<option value="' + esc(p.slug) + '">' + esc(snip(p.title, 46)) + '</option>').join('');
-  const recent = shorts.slice(0, 6).map(p => '<div class="item tap" data-post="' + esc(p.slug) + '"><div class="tx">' + esc(snip(p.title, 120)) + '</div>' + schip(pstate(p)) + '</div>').join('');
+  const recent = shorts.slice(0, 6).map(p => '<div class="item tap" data-post="' + esc(p.slug) + '"><div class="tx">' + esc(snip(p.title, 120)) + '</div>' + schip(pstate(p), p) + '</div>').join('');
   return '<div class="card"><label style="margin-top:0">New idea. Type, or tap the microphone on your keyboard and talk.</label>' +
     '<textarea id="idea" placeholder="What did you notice, learn or get wrong? Rough is fine. You can also tell Claude what to research, for example find what is happening in India."></textarea>' +
     '<label>Build on an earlier short post (optional)</label><select id="buildon">' + opts + '</select>' +
@@ -297,7 +301,8 @@ function render(){
   if(S.tab === 'capture' && !S.reader){
     const ta = $('idea'); if(ta){ ta.value = keep; ta.oninput = () => LS.set('dd_draft', ta.value); $('save').onclick = startShort; }
   }
-  main.querySelectorAll('textarea[data-buf],input[data-buf]').forEach(el => { const k = el.dataset.buf; el.value = S.buf[k] !== undefined ? S.buf[k] : (el.dataset.init || ''); el.oninput = () => { S.buf[k] = el.value; }; });
+  main.querySelectorAll('textarea[data-buf],input[data-buf]').forEach(el => { const k = el.dataset.buf; el.value = S.buf[k] !== undefined ? S.buf[k] : (el.dataset.init || ''); el.oninput = () => { S.buf[k] = el.value; refreshCounters(main); }; });
+  refreshCounters(main);
   bindPostCards(main);
   main.querySelectorAll('[data-lib]').forEach(b => b.onclick = () => { const it = sortedLib()[+b.dataset.lib]; openReader({type: 'long', item: it, mode: it.files.linkedin ? 'linkedin' : 'article'}); });
   main.querySelectorAll('[data-copytext]').forEach(b => b.onclick = () => {
@@ -318,7 +323,7 @@ async function connect(){
 $('refresh').onclick = () => load();
 /* Self-update. APP_V must match the shell-vN number in sw.js, both are bumped together on every release.
    If the server has a newer release than the one running, reload so a phone never keeps an old copy. */
-const APP_V = 10;
+const APP_V = 11;
 async function checkUpdate(){
   try{
     const t = await (await fetch('sw.js?x=' + Date.now(), {cache: 'no-store'})).text();

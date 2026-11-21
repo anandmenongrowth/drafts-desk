@@ -67,7 +67,7 @@ function pstate(p){
   if(pn && pn.del) return 'deleting';
   return (pn && pn.u === p.updated) ? 'queued' : p.state;
 }
-const schip = st => { const [l, c] = DD.POST_STATE[st] || [st, '']; return '<span class="chip ' + c + '">' + esc(l) + '</span>'; };
+const schip = (st, p) => { let [l, c] = DD.POST_STATE[st] || [st, '']; if(st === 'done' && p && p.track === 'short') l = 'Posted'; return '<span class="chip ' + c + '">' + esc(l) + '</span>'; };
 const anyRunning = () => Object.values(S.pp || {}).some(p => p.state === 'running') || Object.keys(S.pending).length > 0 || !!(S.scout && S.scout.state === 'running');
 const kindOf = p => p.track === 'short' ? 'short' : 'long';
 const needsYou = kind => Object.values(S.pp || {}).filter(p => (!kind || kindOf(p) === kind) && ['waiting', 'ready', 'error'].includes(pstate(p))).length;
@@ -146,7 +146,7 @@ async function startScout(){
 }
 function useTopic(i){
   const tp = DD.parseScoutTopics(S.scoutTopics)[i]; if(!tp) return;
-  const text = tp.topic + '\n\nAngle to consider: ' + tp.angle + '\n\nPlease research: ' + tp.research + '\n\nMy own experience on this: ';
+  const text = tp.topic + '\n\nPlease research: ' + tp.research + '\n\nMy own experience on this: ';
   const el = $('idea'); if(!el) return;
   el.value = text; LS.set('dd_draft', text); window.scrollTo(0, 0);
   el.focus(); try{ el.setSelectionRange(text.length, text.length); }catch(_){}
@@ -159,8 +159,7 @@ function vScout(){
   else if(sc && sc.state === 'error') h += '<div class="card" style="border-color:var(--coral)"><b>The topic scout hit a problem</b><p class="muted" style="margin:6px 0 0">' + esc(sc.error || 'Try again.') + '</p></div>';
   if(!busy && list.length){
     h += '<div class="row" style="justify-content:space-between;margin-top:6px"><h2 style="margin:6px 0">Topic ideas</h2><span class="tiny">' + esc(sc ? DD.relTime(sc.updated) : '') + '</span></div>' +
-      list.map((x, i) => '<div class="card"><b>' + esc(x.topic) + '</b>' + (x.persona ? '<div class="row" style="margin:6px 0"><span class="chip">' + esc(x.persona) + '</span></div>' : '') +
-        (x.angle ? '<div class="muted"><b>Angle</b> ' + esc(x.angle) + '</div>' : '') + (x.why ? '<div class="tiny" style="margin-top:4px">Why now ' + esc(x.why) + '</div>' : '') +
+      list.map((x, i) => '<div class="card"><b>' + esc(x.topic) + '</b>' + (x.why ? '<div class="muted" style="margin-top:6px"><b>Why now</b> ' + esc(x.why) + '</div>' : '') +
         '<div style="margin-top:10px"><button class="btn sm" onclick="useTopic(' + i + ')">Use this topic</button></div></div>').join('');
   }
   return h;
@@ -200,7 +199,7 @@ async function startPost(){
 /* ---------- lists ---------- */
 function postCard(p){
   const info = stepInfo(p), st = pstate(p), stg = DD.stages(info.ss, p), cur = stg.find(g => g.current) || stg[stg.length - 1];
-  return '<div class="card tap" data-post="' + esc(p.slug) + '"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><b style="min-width:0">' + esc(snip(p.title || p.slug, 90)) + '</b>' + schip(st) + '</div>' +
+  return '<div class="card tap" data-post="' + esc(p.slug) + '"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><b style="min-width:0">' + esc(snip(p.title || p.slug, 90)) + '</b>' + schip(st, p) + '</div>' +
     '<div class="muted">' + esc(info.track) + ' &middot; Step ' + cur.n + ' of ' + stg.length + ' &middot; ' + esc(info.cur.label) + '</div>' +
     '<div class="bar">' + stg.map(g => '<i class="seg ' + (g.done ? 'done' : g.current ? 'cur' : '') + '"></i>').join('') + '</div>' +
     '<div class="tiny">Updated ' + esc(DD.relTime(p.updated)) + ' &middot; press and hold to delete</div></div>';
@@ -252,7 +251,7 @@ function vPost(r){
   if(!p || !S.pipe) return back + '<p class="muted">Loading...</p>';
   if(r.file) return vFile(r, p);
   const info = stepInfo(p), st = pstate(p), stg = DD.stages(info.ss, p), cur = stg.find(g => g.current) || stg[stg.length - 1];
-  let h = back + '<div class="card"><h2 style="margin-top:0">' + esc(snip(p.title || p.slug, 120)) + '</h2><div class="row"><span class="chip">' + esc(info.track) + '</span>' + schip(st) + '</div><div class="stepper">' +
+  let h = back + '<div class="card"><h2 style="margin-top:0">' + esc(snip(p.title || p.slug, 120)) + '</h2><div class="row"><span class="chip">' + esc(info.track) + '</span>' + schip(st, p) + '</div><div class="stepper">' +
     stg.map(g => '<div class="stg ' + (g.done ? 'done' : g.current ? 'cur' : '') + '"><span class="dot">' + (g.done ? '&#10003;' : g.n) + '</span>' + esc(g.label) + '</div>').join('') + '</div></div>';
   h += ideaFold(p);
   h += '<div class="card soft"><div class="muted">Step ' + cur.n + ' of ' + stg.length + '</div><h3 style="margin:2px 0 8px">' + esc(info.cur.label) + '</h3>' + panelBody(p, st, info) + '</div>';
@@ -325,31 +324,27 @@ function waitingPanel(p, step, q){
       '<label>Your idea (edit it, then check again)</label>' + ta(slug, 'bullets', bl, 'Your idea', true) +
       '<div class="row" style="margin-top:10px"><button class="btn" onclick="recheck(\'' + q + '\')">Update my idea and check again</button><button class="btn ghost" onclick="completeStep(\'' + q + '\',{},\'Going ahead. Claude is researching.\')">Go ahead anyway</button></div>';
   }
-  if(step.id === 'choose'){
-    ensureDoc(src('variants.md'), false);
-    const vt = docOf(slug, 'variants.md');
-    if(vt == null) return '<p class="muted">Loading...</p>';
-    const pr = DD.parsePost(vt);
-    return '<p>Pick the one that feels closest to you. You can edit it freely in the next step.</p>' + pr.variants.map(v => {
-      const words = v.text.split(/\s+/).filter(Boolean).length;
-      return '<div class="var"><div class="row"><b>Variant ' + esc(v.id) + '</b>' + (v.hook ? '<span class="chip">' + esc(v.hook) + '</span>' : '') + (v.persona && v.persona !== 'none' ? '<span class="chip dim">' + esc(snip(v.persona, 30)) + '</span>' : '') + '<span class="tiny">' + words + ' words</span></div>' +
-        '<div class="t">' + esc(v.text) + '</div><button class="btn sm" onclick="chooseVariant(\'' + q + '\',\'' + esc(v.id) + '\')">Choose Variant ' + esc(v.id) + '</button></div>';
-    }).join('') +
-      (pr.sources ? '<div class="card fold ' + (S.open['src|' + slug] ? 'open' : '') + '" onclick="toggle(\'src|' + q + '\')"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><b>Sources used</b><span class="tiny">tap to read</span></div><div class="more">' + esc(pr.sources) + '</div></div>' : '') +
-      '<div class="row"><button class="btn sm ghost" onclick="openFile(\'' + q + '\',\'research.md\')">Read the research</button></div>' +
-      '<label>Not quite right? Say what to change and Claude writes two new variants</label>' + ta(slug, 'note', '', 'For example, lead with the India data, make it less formal') + '<div style="margin-top:8px"><button class="btn sm ghost" onclick="redoStep(\'' + q + '\',\'draft\',\'Sent. Claude is writing new variants.\')">Write new variants</button></div>';
+  if(step.id === 'write'){
+    ensureDoc(src('research.md'), true); ensureDoc(src('post.md'), true);
+    const rs = docOf(slug, 'research.md'), pm = docOf(slug, 'post.md');
+    if(rs == null || pm == null) return '<p class="muted">Loading...</p>';
+    const dirs = DD.parseDirections(rs);
+    return '<p>' + esc(step.desc) + '</p>' +
+      (dirs.length ? '<b>Directions from the research</b><div class="tiny" style="margin-bottom:6px">Tap Add to drop one into your draft, then put it in your own words.</div>' + dirs.map((d, i) => '<div class="var"><div>' + esc(d) + '</div><div style="margin-top:8px"><button class="btn sm sky" onclick="addDirection(\'' + q + '\',' + i + ')">Add to my draft</button></div></div>').join('') : '<p class="muted">The research has no direction list. Open the full research below.</p>') +
+      '<div class="row"><button class="btn sm ghost" onclick="openFile(\'' + q + '\',\'research.md\')">Read the full research</button></div>' +
+      '<label>Your draft</label>' + ta(slug, 'post', pm, 'Write your post here, in your own words. Typed or dictated.', true) + counterFor(slug, 'post') +
+      '<div class="row" style="margin-top:10px"><button class="btn sm ghost" onclick="saveDraft(\'' + q + '\',false)">Save</button><button class="btn" onclick="saveDraft(\'' + q + '\',true)">Save and optimize it</button></div>' +
+      laptopCard(p, 'post');
   }
   if(step.id === 'rewrite'){
     const file = step.file || 'draft.md', base = file.replace(/\.md$/, '');
     ensureDoc(src(file), false);
     const d = docOf(slug, file);
     const words = d ? d.split(/\s+/).filter(Boolean).length : 0;
-    const redo = p.track === 'short' ? '' :
+    return '<p>' + esc(step.desc) + '</p><div class="row"><button class="btn sm" onclick="beginEdit(\'' + q + '\',\'' + esc(file) + '\')">Edit draft here</button><button class="btn sm ghost" onclick="openFile(\'' + q + '\',\'' + esc(file) + '\')">Read it</button></div>' +
+      (d ? '<p class="muted" style="margin-top:8px">About ' + words + ' words.</p>' : '') + laptopCard(p, base) +
       '<label>Want Claude to redo the whole draft? Say what to change (this replaces your edits)</label>' + ta(slug, 'note', '', 'For example, open with the story, cut the second section') +
-      '<div style="margin-top:8px"><button class="btn sm ghost" onclick="confirmRedoDraft(\'' + q + '\')">Redo the draft</button></div>';
-    const preview = p.track === 'short' && d ? '<div class="var"><div class="t">' + esc(d) + '</div></div>' : '';
-    return '<p>' + esc(step.desc) + '</p>' + preview + '<div class="row"><button class="btn sm" onclick="beginEdit(\'' + q + '\',\'' + esc(file) + '\')">Edit here</button>' + (p.track === 'short' ? '' : '<button class="btn sm ghost" onclick="openFile(\'' + q + '\',\'' + esc(file) + '\')">Read it</button>') + '</div>' +
-      (d ? '<p class="muted" style="margin-top:8px">About ' + words + ' words.</p>' : '') + laptopCard(p, base) + redo +
+      '<div style="margin-top:8px"><button class="btn sm ghost" onclick="confirmRedoDraft(\'' + q + '\')">Redo the draft</button></div>' +
       '<div style="margin-top:10px"><button class="btn" onclick="completeStep(\'' + q + '\',{},\'Done. Claude is learning from your changes.\')">My edit is done, continue</button></div>';
   }
   if(step.id === 'image-confirm'){
@@ -369,10 +364,17 @@ function waitingPanel(p, step, q){
       '<div style="margin-top:12px"><button class="btn" onclick="completeStep(\'' + q + '\')">Checklist done, continue</button></div>';
   }
   if(step.id === 'ship' && p.track === 'short'){
-    ensureDoc(src('post.md'), true);
-    const pt = docOf(slug, 'post.md');
-    return '<p>Copy it to LinkedIn and Substack Notes, then tap that you posted it.</p>' + (pt == null ? '<p class="muted">Loading...</p>' : '<div class="var"><div class="t">' + esc(pt) + '</div><div class="row"><button class="btn sm" onclick="copyFile(\'' + q + '\',\'post.md\')">Copy</button><button class="btn sm ghost" onclick="beginEdit(\'' + q + '\',\'post.md\')">Edit</button></div></div>') +
+    ['final.md', 'post.md', 'optimize-notes.md'].forEach(f => ensureDoc(src(f), true));
+    const fin = docOf(slug, 'final.md'), mine = docOf(slug, 'post.md'), notes = docOf(slug, 'optimize-notes.md');
+    if(fin == null || mine == null) return '<p class="muted">Loading...</p>';
+    const fk = 'mine|' + slug;
+    return '<p>Your optimized post. Copy it to LinkedIn and Substack Notes, then tap that you posted it.</p>' +
+      '<div class="var"><div class="t">' + esc(fin) + '</div><div style="margin:6px 0">' + counterHtml(fin) + '</div><div class="row"><button class="btn sm" onclick="copyFile(\'' + q + '\',\'final.md\')">Copy</button><button class="btn sm ghost" onclick="beginEdit(\'' + q + '\',\'final.md\')">Edit</button></div></div>' +
+      (notes ? '<b>What changed</b><div class="doc" style="margin:6px 0 12px">' + mdHtml(notes) + '</div>' : '') +
+      '<div class="card fold ' + (S.open[fk] ? 'open' : '') + '" onclick="toggle(\'' + esc(fk) + '\')"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><b>Your version</b><span class="tiny">' + (S.open[fk] ? 'tap to collapse' : 'tap to compare') + '</span></div><div class="less">' + esc(mine) + '</div><div class="more">' + esc(mine) + '<div style="margin-top:6px">' + counterHtml(mine) + '</div></div></div>' +
       editorBlock(slug, q, 'Fix what it flags by tapping Edit, then run the editor again.') +
+      '<label>Want it optimized differently? Say what to change</label>' + ta(slug, 'note', '', 'For example, shorter, sharper opening, keep more of my wording') +
+      '<div class="row" style="margin-top:8px"><button class="btn sm ghost" onclick="redoStep(\'' + q + '\',\'optimize\',\'Sent. Claude is optimizing again.\')">Optimize again</button></div>' +
       '<div style="margin-top:12px"><button class="btn" onclick="completeStep(\'' + q + '\',{},\'Marked as posted. Adding it to your coverage list.\')">I posted it</button></div>';
   }
   if(step.id === 'ship'){
@@ -385,12 +387,42 @@ function waitingPanel(p, step, q){
   return '<p>' + esc(step.desc || '') + '</p><button class="btn" onclick="completeStep(\'' + q + '\')">Continue</button>';
 }
 
+/* ---------- live length counter for LinkedIn posts ---------- */
+function counterHtml(text){
+  const li = DD.lengthInfo(text, S.pipe && S.pipe.limits), L = li.lim;
+  const msg = li.level === 'ok' ? 'good LinkedIn length' : li.level === 'warn' ? 'a bit long, aim for ' + L.linkedin_target_chars.toLocaleString() + ' or fewer' : 'too long, keep it under ' + L.linkedin_max_chars.toLocaleString();
+  return '<span class="cnt ' + li.level + '"><b>' + li.chars.toLocaleString() + '</b> characters &middot; ' + li.words + ' words &middot; ' + msg + '</span>';
+}
+function refreshCounters(root){
+  (root || document).querySelectorAll('[data-counter-for]').forEach(el => {
+    const k = el.dataset.counterFor, ta_ = document.querySelector('[data-buf="' + k + '"]');
+    el.innerHTML = counterHtml(ta_ ? ta_.value : (S.buf[k] || ''));
+  });
+}
+const counterFor = (slug, name) => '<div class="counter" data-counter-for="' + esc(bufKey(slug, name)) + '"></div>';
+
+function addDirection(slug, i){
+  const d = DD.parseDirections(docOf(slug, 'research.md') || '')[i]; if(!d) return;
+  const k = bufKey(slug, 'post'), cur = S.buf[k] !== undefined ? S.buf[k] : (docOf(slug, 'post.md') || '');
+  S.buf[k] = (cur.trim() ? cur.replace(/\s+$/, '') + '\n\n' : '') + d;
+  render(); toast('Added to your draft. Rewrite it in your own words.', 2600);
+}
+async function saveDraft(slug, thenOptimize){
+  const text = bval(slug, 'post', docOf(slug, 'post.md')).trim();
+  if(!text){ toast('Write your draft first'); return; }
+  try{
+    await put('drafts/' + slug + '/_source/post.md', text + '\n', 'draft ' + slug);
+    S.docs['drafts/' + slug + '/_source/post.md'] = text + '\n'; delete S.buf[bufKey(slug, 'post')];
+    if(S.files[slug]) S.files[slug].src.add('post.md');
+    if(thenOptimize) await completeStep(slug, {}, 'Saved. Claude is optimizing your draft.'); else { toast('Saved'); render(); }
+  }catch(e){ toast('Could not save: ' + e.message, 4200); }
+}
+
 /* ---------- panel actions ---------- */
 async function pickTopic(slug, i){
   const t = DD.parseTopics(docOf(slug, 'topics.md') || '')[i]; if(!t) return;
   await completeStep(slug, {text: t.question}, 'Topic chosen. Add your raw material next.');
 }
-async function chooseVariant(slug, v){ await completeStep(slug, {variant: v}, 'Variant ' + v + ' chosen. Edit it into your own words.'); }
 async function saveBullets(slug, thenDraft){
   const text = bval(slug, 'bullets', docOf(slug, 'bullets.md')).trim();
   if(!text){ toast('Write or dictate something first'); return; }
@@ -451,11 +483,12 @@ function vFile(r, p){
   let h = back + '<div class="card"><h2 style="margin-top:0">' + esc(art.label) + '</h2><div class="muted">' + esc(snip(p.title || p.slug, 90)) + '</div>';
   if(doc == null) return h + '<p class="muted">Loading...</p></div>';
   if(r.edit){
-    return h + '<textarea class="big" data-buf="' + esc(bufKey(p.slug, r.file)) + '" data-init="' + esc(doc) + '"></textarea><div class="row" style="margin-top:10px"><button class="btn" onclick="saveEdit()">Save</button><button class="btn ghost" onclick="cancelEdit()">Cancel</button></div></div>';
+    return h + '<textarea class="big" data-buf="' + esc(bufKey(p.slug, r.file)) + '" data-init="' + esc(doc) + '"></textarea>' + (/^(post|final)\.md$/.test(r.file) ? counterFor(p.slug, r.file) : '') + '<div class="row" style="margin-top:10px"><button class="btn" onclick="saveEdit()">Save</button><button class="btn ghost" onclick="cancelEdit()">Cancel</button></div></div>';
   }
   h += '<div class="row" style="margin:10px 0"><button class="btn sm sky" onclick="copy(S.docs[\'' + esc(path) + '\'])">Copy</button>' + (art.editable ? '<button class="btn sm" onclick="beginEdit(\'' + esc(p.slug) + '\',\'' + esc(r.file) + '\')">Edit</button>' : '') + '</div>';
   h += (art.render === 'md' ? '<div class="doc">' + mdHtml(doc) + '</div>' : '<div class="doc pre">' + esc(doc) + '</div>') + '</div>';
   if(r.file === 'draft.md') h += laptopCard(p, 'draft');
+  if(/^(post|final)\.md$/.test(r.file)) h = h.replace('</div></div>', '</div><div style="margin-top:6px">' + counterHtml(doc) + '</div></div>');
   if(r.file === 'post.md') h += laptopCard(p, 'post');
   return h;
 }
