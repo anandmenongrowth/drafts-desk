@@ -284,6 +284,13 @@ function vReader(){
   return h;
 }
 
+/** which bottom tab to light up. Inside a post it is that post's own tab, inside a library item it is Library. */
+function activeTab(){
+  const r = S.reader;
+  if(!r) return S.tab;
+  if(r.type === 'post'){ const p = S.pp[r.slug]; return p && p.track === 'short' ? 'short' : 'long'; }
+  return 'library';
+}
 function render(){
   const main = $('main'), nav = $('nav');
   if(!S.conn){ main.innerHTML = vSetup(); nav.style.display = 'none'; $('refresh').style.display = 'none'; $('connect').onclick = connect; return; }
@@ -296,7 +303,7 @@ function render(){
   main.innerHTML = body;
   const bd = k => (S.pipe && needsYou(k) ? '<span class="badge">' + needsYou(k) + '</span>' : '');
   nav.innerHTML = [['capture','&#9998;','Capture'],['short','&#9733;','Short Posts'],['long','&#9873;','Long Posts'],['library','&#9776;','Library']].map(([k,ic,l]) =>
-    '<button class="' + (S.tab === k && !S.reader ? 'on' : '') + '" data-tab="' + k + '"><span class="ic">' + ic + '</span>' + l + (k === 'short' ? bd('short') : k === 'long' ? bd('long') : '') + '</button>').join('');
+    '<button class="' + (activeTab() === k ? 'on' : '') + '" data-tab="' + k + '"><span class="ic">' + ic + '</span>' + l + (k === 'short' ? bd('short') : k === 'long' ? bd('long') : '') + '</button>').join('');
   nav.querySelectorAll('button').forEach(b => b.onclick = () => go(b.dataset.tab));
   if(S.tab === 'capture' && !S.reader){
     const ta = $('idea'); if(ta){ ta.value = keep; ta.oninput = () => LS.set('dd_draft', ta.value); $('save').onclick = startShort; }
@@ -323,7 +330,7 @@ async function connect(){
 $('refresh').onclick = () => load();
 /* Self-update. APP_V must match the shell-vN number in sw.js, both are bumped together on every release.
    If the server has a newer release than the one running, reload so a phone never keeps an old copy. */
-const APP_V = 11;
+const APP_V = 12;
 async function checkUpdate(){
   try{
     const t = await (await fetch('sw.js?x=' + Date.now(), {cache: 'no-store'})).text();
