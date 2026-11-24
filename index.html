@@ -331,7 +331,7 @@ $('refresh').onclick = () => load();
 $('mascot').onclick = () => { if(S.conn) disconnect(); };
 /* Self-update. APP_V must match the shell-vN number in sw.js, both are bumped together on every release.
    If the server has a newer release than the one running, reload so a phone never keeps an old copy. */
-const APP_V = 12;
+const APP_V = 13;
 async function checkUpdate(){
   try{
     const t = await (await fetch('sw.js?x=' + Date.now(), {cache: 'no-store'})).text();
