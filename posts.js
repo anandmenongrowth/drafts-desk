@@ -158,9 +158,10 @@ function vScout(){
   if(busy) h += '<div class="card soft"><b>Finding topics</b><p class="muted" style="margin:6px 0 0">Claude is researching what is current for your readers. You will get a notification, or tap Refresh in a few minutes.</p></div>';
   else if(sc && sc.state === 'error') h += '<div class="card" style="border-color:var(--coral)"><b>The topic scout hit a problem</b><p class="muted" style="margin:6px 0 0">' + esc(sc.error || 'Try again.') + '</p></div>';
   if(!busy && list.length){
-    h += '<div class="row" style="justify-content:space-between;margin-top:6px"><h2 style="margin:6px 0">Topic ideas</h2><span class="tiny">' + esc(sc ? DD.relTime(sc.updated) : '') + '</span></div>' +
-      list.map((x, i) => '<div class="card"><b>' + esc(x.topic) + '</b>' + (x.why ? '<div class="muted" style="margin-top:6px"><b>Why now</b> ' + esc(x.why) + '</div>' : '') +
-        '<div style="margin-top:10px"><button class="btn sm" onclick="useTopic(' + i + ')">Use this topic</button></div></div>').join('');
+    const open = !!S.open.topics;
+    h += '<div class="row" style="justify-content:space-between;margin-top:6px"><button class="btn sm sky" onclick="toggle(\'topics\')">' + (open ? '&#9662; ' : '&#9656; ') + 'Topic ideas (' + list.length + ')</button><span class="tiny">' + esc(sc ? DD.relTime(sc.updated) : '') + '</span></div>' +
+      (!open ? '' : list.map((x, i) => '<div class="card"><b>' + esc(x.topic) + '</b>' + (x.why ? '<div class="muted" style="margin-top:6px"><b>Why now</b> ' + esc(x.why) + '</div>' : '') +
+        '<div style="margin-top:10px"><button class="btn sm" onclick="useTopic(' + i + ')">Use this topic</button></div></div>').join(''));
   }
   return h;
 }
