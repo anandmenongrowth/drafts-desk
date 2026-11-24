@@ -109,7 +109,7 @@ code{background:var(--sky);padding:1px 6px;border-radius:6px;font-size:15px}
 </head>
 <body>
 <header>
-  <img src="mascot.png" alt="">
+  <img src="mascot.png" alt="Change repo or token" id="mascot" title="Change repo or token" style="cursor:pointer">
   <div><h1>Drafts Desk</h1><div class="sub" id="sub">ideas in, posts out</div></div>
   <div class="sp"></div>
   <button class="ref" id="refresh" aria-label="Refresh">Refresh</button>
@@ -222,7 +222,7 @@ async function loadDoc(path){
   try{ S.docs[path] = await raw(path); }catch(e){ S.docs[path] = 'Could not load this file (' + e.message + ').'; }
   render();
 }
-async function disconnect(){ if(await askConfirm('Disconnect this phone and enter the token again?', 'Disconnect')){ LS.del('dd_conn'); S.conn = null; S.loaded = false; S.reader = null; S.stack = []; render(); } }
+async function disconnect(){ if(await askConfirm('Change the repo or token? You will go back to the connect screen.', 'Change')){ LS.del('dd_conn'); S.conn = null; S.loaded = false; S.reader = null; S.stack = []; render(); } }
 function mdHtml(t){
   const inl = x => esc(x).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*([^*\n]+?)\*/g, '$1<i>$2</i>');
   return String(t || '').replace(/\r/g, '').split(/\n\s*\n/).map(b => {
@@ -328,6 +328,7 @@ async function connect(){
 }
 
 $('refresh').onclick = () => load();
+$('mascot').onclick = () => { if(S.conn) disconnect(); };
 /* Self-update. APP_V must match the shell-vN number in sw.js, both are bumped together on every release.
    If the server has a newer release than the one running, reload so a phone never keeps an old copy. */
 const APP_V = 12;
