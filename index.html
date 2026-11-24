@@ -204,7 +204,28 @@ async function load(){
     await loadPosts();
   }catch(e){ S.err = String(e.message || e); }
   S.loading = false; render();
+  if(!S.err) saveCache();
 }
+/* ---------- local copy: the app opens with what it last saw, then refreshes in the background ---------- */
+const CKEY = () => 'dd_cache:' + (S.conn ? S.conn.repo : '');
+function saveCache(){
+  if(!S.conn || !S.loaded) return;
+  const docs = {}; Object.keys(S.docs).forEach(k => { if(k.indexOf('drafts/') === 0 && typeof S.docs[k] === 'string' && !/^Could not load/.test(S.docs[k])) docs[k] = S.docs[k]; });
+  const files = {}; Object.keys(S.files).forEach(k => { const f = S.files[k]; if(f) files[k] = {src: [...f.src], docx: [...f.docx]}; });
+  const snap = {lib: S.lib, pipe: S.pipe, pp: S.pp, scout: S.scout, scoutTopics: S.scoutTopics};
+  LS.set(CKEY(), {...snap, docs, files});
+  if(LS.get(CKEY(), null) === null) LS.set(CKEY(), snap);   /* storage full: keep the lists, drop the documents */
+}
+function loadCache(){
+  const c = S.conn && LS.get(CKEY(), null);
+  if(!c || !c.pipe) return;
+  S.lib = c.lib || []; S.pipe = c.pipe; S.pp = c.pp || {}; S.scout = c.scout || null; S.scoutTopics = c.scoutTopics || '';
+  S.docs = c.docs || {};
+  S.files = {}; Object.keys(c.files || {}).forEach(k => S.files[k] = {src: new Set(c.files[k].src), docx: new Set(c.files[k].docx)});
+  S.loaded = true;
+}
+document.addEventListener('visibilitychange', () => { if(document.hidden) saveCache(); });
+window.addEventListener('pagehide', saveCache);
 async function copy(txt){
   try{ await navigator.clipboard.writeText(txt); }
   catch(e){ const a = document.createElement('textarea'); a.value = txt; document.body.appendChild(a); a.select(); try{document.execCommand('copy')}catch(_){} a.remove(); }
@@ -331,7 +352,7 @@ $('refresh').onclick = () => load();
 $('mascot').onclick = () => { if(S.conn) disconnect(); };
 /* Self-update. APP_V must match the shell-vN number in sw.js, both are bumped together on every release.
    If the server has a newer release than the one running, reload so a phone never keeps an old copy. */
-const APP_V = 13;
+const APP_V = 14;
 async function checkUpdate(){
   try{
     const t = await (await fetch('sw.js?x=' + Date.now(), {cache: 'no-store'})).text();
@@ -362,7 +383,7 @@ setInterval(() => {
   const a = document.activeElement, typing = a && /TEXTAREA|INPUT|SELECT/.test(a.tagName);
   if(S.conn && !S.loading && !document.hidden && !typing && (anyRunning() || Date.now() < S.pollUntil)) load();
 }, 9000);
-render(); if(S.conn) load();
+loadCache(); render(); if(S.conn) load();
 </script>
 </body>
 </html>

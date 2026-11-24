@@ -24,7 +24,7 @@ async function ensureDoc(path, okMissing){
 
 /* ---------- loading ---------- */
 async function loadPosts(){
-  if(!S.pipe){ try{ S.pipe = JSON.parse(await raw('pipeline.json')); }catch(e){ S.pipe = null; } }
+  try{ S.pipe = JSON.parse(await raw('pipeline.json')); }catch(e){ if(!S.pipe) S.pipe = null; }
   const dirs = (await listDirs('drafts')).filter(d => d.type === 'dir').map(d => d.name);
   const sts = await Promise.all(dirs.map(n => raw('drafts/' + n + '/status.json').then(t => JSON.parse(t)).catch(() => null)));
   const old = S.pp || {}; S.pp = {};
