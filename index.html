@@ -112,7 +112,7 @@ code{background:var(--sky);padding:1px 6px;border-radius:6px;font-size:15px}
   <img src="mascot.png" alt="Change repo or token" id="mascot" title="Change repo or token" style="cursor:pointer">
   <div><h1>Drafts Desk</h1><div class="sub" id="sub">ideas in, posts out</div></div>
   <div class="sp"></div>
-  <button class="ref" id="refresh" aria-label="Refresh">Refresh</button>
+  <div style="display:flex;flex-direction:column;align-items:flex-end"><button class="ref" id="refresh" aria-label="Refresh">Refresh</button><span id="fresh" style="font-size:11px;color:var(--muted);margin-top:2px"></span></div>
 </header>
 <main id="main"></main>
 <nav id="nav"></nav>
@@ -204,7 +204,7 @@ async function load(){
     await loadPosts();
   }catch(e){ S.err = String(e.message || e); }
   S.loading = false; render();
-  if(!S.err) saveCache();
+  if(!S.err){ S.fetchedAt = Date.now(); saveCache(); showFresh(); }
 }
 /* ---------- local copy: the app opens with what it last saw, then refreshes in the background ---------- */
 const CKEY = () => 'dd_cache:' + (S.conn ? S.conn.repo : '');
@@ -212,17 +212,24 @@ function saveCache(){
   if(!S.conn || !S.loaded) return;
   const docs = {}; Object.keys(S.docs).forEach(k => { if(k.indexOf('drafts/') === 0 && typeof S.docs[k] === 'string' && !/^Could not load/.test(S.docs[k])) docs[k] = S.docs[k]; });
   const files = {}; Object.keys(S.files).forEach(k => { const f = S.files[k]; if(f) files[k] = {src: [...f.src], docx: [...f.docx]}; });
-  const snap = {lib: S.lib, pipe: S.pipe, pp: S.pp, scout: S.scout, scoutTopics: S.scoutTopics};
+  const snap = {at: S.fetchedAt, lib: S.lib, pipe: S.pipe, pp: S.pp, scout: S.scout, scoutTopics: S.scoutTopics};
   LS.set(CKEY(), {...snap, docs, files});
   if(LS.get(CKEY(), null) === null) LS.set(CKEY(), snap);   /* storage full: keep the lists, drop the documents */
 }
 function loadCache(){
   const c = S.conn && LS.get(CKEY(), null);
   if(!c || !c.pipe) return;
+  S.fetchedAt = c.at || 0;
   S.lib = c.lib || []; S.pipe = c.pipe; S.pp = c.pp || {}; S.scout = c.scout || null; S.scoutTopics = c.scoutTopics || '';
   S.docs = c.docs || {};
   S.files = {}; Object.keys(c.files || {}).forEach(k => S.files[k] = {src: new Set(c.files[k].src), docx: new Set(c.files[k].docx)});
   S.loaded = true;
+}
+function showFresh(){
+  const el = $("fresh"); if(!el) return;
+  if(!S.fetchedAt){ el.textContent = ""; return; }
+  const d = new Date(S.fetchedAt), t = d.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"});
+  el.textContent = "Refreshed " + (d.toDateString() === new Date().toDateString() ? t : d.toLocaleDateString([], {day: "numeric", month: "short"}) + ", " + t);
 }
 document.addEventListener('visibilitychange', () => { if(document.hidden) saveCache(); });
 window.addEventListener('pagehide', saveCache);
@@ -352,7 +359,7 @@ $('refresh').onclick = () => load();
 $('mascot').onclick = () => { if(S.conn) disconnect(); };
 /* Self-update. APP_V must match the shell-vN number in sw.js, both are bumped together on every release.
    If the server has a newer release than the one running, reload so a phone never keeps an old copy. */
-const APP_V = 15;
+const APP_V = 16;
 async function checkUpdate(){
   try{
     const t = await (await fetch('sw.js?x=' + Date.now(), {cache: 'no-store'})).text();
@@ -383,7 +390,7 @@ setInterval(() => {
   const a = document.activeElement, typing = a && /TEXTAREA|INPUT|SELECT/.test(a.tagName);
   if(S.conn && !S.loading && !document.hidden && !typing && (anyRunning() || Date.now() < S.pollUntil)) load();
 }, 9000);
-loadCache(); render(); if(S.conn) load();
+loadCache(); render(); showFresh(); if(S.conn) load();
 </script>
 </body>
 </html>
