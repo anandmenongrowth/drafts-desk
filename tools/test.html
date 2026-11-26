@@ -15,5 +15,14 @@ eq(nm.status,'needs-more','nm status'); eq(nm.question,'How many reports?','q');
 eq(DD.stateOf(null,null),'drafting','s1'); eq(DD.stateOf(p,null),'ready','s2');
 eq(DD.stateOf(p,{action:'revise',handled:false}),'revising','s3'); eq(DD.stateOf(p,{action:'revise',handled:true}),'ready','s4');
 eq(DD.stateOf(p,{action:'posted'}),'posted','s5'); eq(DD.stateOf(nm,null),'needs-more','s6');
+// dashboard stats
+{ const L=[{date:'2026-10-13',track:'Inflektion Point',words:900},{date:'2026-10-18',track:'Inflektion Point',words:800},{date:'2026-11-16',track:'Inflektion Point',words:700},{date:'2026-11-23',track:'Short post',words:150},{date:'2026-11-25',track:'Short post',words:120}];
+  const s=DD.stats(L,{a:{state:'waiting'},b:{state:'done'}},new Date(2026,10,26));
+  eq([s.total,s.long,s.short,s.week,s.month,s.words,s.open],[5,3,2,2,3,2670,1],'dash counts');
+  eq([s.streak,s.longestStreak,s.streakAlive],[2,2,true],'dash streak');
+  eq(DD.stats([{date:'2026-11-16'}],{},new Date(2026,10,26)).streak,1,'streak alive from last week');
+  eq(DD.stats([{date:'2026-11-02'}],{},new Date(2026,10,26)).streak,0,'streak broken after a missed week');
+  eq(DD.stats([],{}).total,0,'dash empty'); eq(DD.cheer(DD.stats([],{})).length>0,true,'cheer empty');
+  eq(DD.stats([{date:'2026-11-22'},{date:'2026-11-23'}],{},new Date(2026,10,26)).streak,2,'sunday and monday are different weeks'); }
 document.getElementById('o').textContent = out.length ? out.join('\n') : 'ALL PASSED';
 </script></body></html>

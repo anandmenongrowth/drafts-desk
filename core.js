@@ -121,6 +121,50 @@
   /** what to show for a post's state */
   const POST_STATE = { running: ['Claude is working', 'dim'], waiting: ['Your turn', 'ready'], ready: ['Ready to run', 'ready'], error: ['Needs attention', 'warn'], done: ['Published', 'posted'], queued: ['Sent to Claude', 'dim'], deleting: ['Deleting', 'dim'] };
 
-  const C = { parseDirections, lengthInfo, parseScoutTopics, ideaId, ideaFile, parseIdea, parsePost, stateOf, LABEL, slugify, parseTopics, verdict, relTime, stages, POST_STATE };
+  /** Dashboard numbers from the library list (published posts) and the post statuses (in progress).
+      Weeks run Monday to Sunday. A streak is consecutive weeks with at least one post out. */
+  function dayNo(iso){ const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || '')); return m ? Date.UTC(+m[1], +m[2] - 1, +m[3]) / 86400000 : NaN; }
+  const weekNo = d => Math.floor((d + 3) / 7);
+  const SHORT_TRACK = 'Short post';
+  function stats(lib, pp, now) {
+    const n = now || new Date();
+    const today = Date.UTC(n.getFullYear(), n.getMonth(), n.getDate()) / 86400000;
+    const ym = n.getFullYear() + '-' + pad(n.getMonth() + 1);
+    const items = (lib || []).filter(i => !isNaN(dayNo(i.date)));
+    const words = i => (typeof i.words === 'number' ? i.words : 0);
+    const thisWeek = weekNo(today);
+    const inWeek = items.filter(i => weekNo(dayNo(i.date)) === thisWeek);
+    const inMonth = items.filter(i => String(i.date).slice(0, 7) === ym);
+    const weeks = [...new Set(items.map(i => weekNo(dayNo(i.date))))].sort((a, b) => a - b);
+    let longest = 0, run = 0;
+    weeks.forEach((w, k) => { run = k > 0 && w === weeks[k - 1] + 1 ? run + 1 : 1; if (run > longest) longest = run; });
+    const has = new Set(weeks);
+    let cur = 0, w = has.has(thisWeek) ? thisWeek : thisWeek - 1;
+    while (has.has(w)) { cur++; w--; }
+    const byMonth = {}; items.forEach(i => { const k = String(i.date).slice(0, 7); byMonth[k] = (byMonth[k] || 0) + 1; });
+    const best = Object.keys(byMonth).sort((a, b) => byMonth[b] - byMonth[a] || b.localeCompare(a))[0] || '';
+    const total = items.length, totalWords = items.reduce((a, i) => a + words(i), 0);
+    const first = items.map(i => i.date).sort()[0] || '';
+    const open = Object.values(pp || {}).filter(p => p && p.state !== 'done').length;
+    const MP = [1, 5, 10, 15, 25, 50, 75, 100], MW = [5000, 10000, 25000, 50000, 100000];
+    const nextP = MP.find(x => x > total), nextW = MW.find(x => x > totalWords);
+    return {
+      total, long: items.filter(i => i.track !== SHORT_TRACK).length, short: items.filter(i => i.track === SHORT_TRACK).length,
+      week: inWeek.length, month: inMonth.length, words: totalWords, wordsMonth: inMonth.reduce((a, i) => a + words(i), 0),
+      streak: cur, longestStreak: longest, streakAlive: has.has(thisWeek), best: best ? { month: best, n: byMonth[best] } : null,
+      first, open, nextPosts: nextP ? { target: nextP, left: nextP - total } : null, nextWords: nextW ? { target: nextW, left: nextW - totalWords } : null,
+      badges: MP.filter(x => x <= total).map(x => x + (x === 1 ? ' post' : ' posts')).concat(MW.filter(x => x <= totalWords).map(x => x.toLocaleString('en-US') + ' words'))
+    };
+  }
+  /** one warm line for the top of the Dashboard */
+  function cheer(s) {
+    if (!s.total) return 'Your first published post is waiting to be counted here.';
+    if (s.week > 0 && s.streak >= 2) return s.streak + ' weeks in a row with a post out. Keep going.';
+    if (s.week > 0) return 'A post is out this week. That is what the streak is built from.';
+    if (s.streak >= 1) return 'Your ' + s.streak + '-week streak is alive. One post this week keeps it going.';
+    return 'A new streak starts with your next post. ' + s.total + ' already out.';
+  }
+
+  const C = { stats, cheer, dayNo, parseDirections, lengthInfo, parseScoutTopics, ideaId, ideaFile, parseIdea, parsePost, stateOf, LABEL, slugify, parseTopics, verdict, relTime, stages, POST_STATE };
   if (typeof module !== 'undefined' && module.exports) module.exports = C; else root.DD = C;
 })(typeof window !== 'undefined' ? window : globalThis);

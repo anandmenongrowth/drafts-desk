@@ -104,6 +104,13 @@ textarea.big{min-height:46vh}
 .dlgbox{background:var(--white);border-radius:20px;padding:20px;max-width:380px;width:100%;box-shadow:0 10px 40px rgba(31,58,74,.3)}
 #dlgmsg{white-space:pre-line;font-size:17px;line-height:1.45}
 body:has(#dlg[style*="flex"]) .btn{pointer-events:auto;opacity:1}
+.dash{background:linear-gradient(135deg,var(--sky),var(--coral-l));border-color:var(--sky2)}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 4px}
+.tile{background:var(--white);border:1px solid var(--line);border-radius:14px;padding:10px 6px;text-align:center}
+.tile b{display:block;font-size:24px;line-height:1.15;color:var(--coral-d)}
+.tile span{font-size:13px;color:var(--muted)}
+.cheer{font-weight:800;margin:0 0 2px}
+.bdg{display:inline-block;margin:0 6px 6px 0;background:#D9F2E3;color:#25704A;border-radius:999px;padding:4px 12px;font-size:14px;font-weight:700}
 code{background:var(--sky);padding:1px 6px;border-radius:6px;font-size:15px}
 </style>
 </head>
@@ -281,12 +288,35 @@ function vCapture(){
   const shorts = Object.values(S.pp).filter(p => p.track === 'short').sort((a, b) => String(b.updated).localeCompare(String(a.updated)));
   const opts = '<option value="none">Nothing, a fresh idea</option>' + shorts.slice(0, 15).map(p => '<option value="' + esc(p.slug) + '">' + esc(snip(p.title, 46)) + '</option>').join('');
   const recent = shorts.slice(0, 6).map(p => '<div class="item tap" data-post="' + esc(p.slug) + '"><div class="tx">' + esc(snip(p.title, 120)) + '</div>' + schip(pstate(p), p) + '</div>').join('');
-  return '<div class="card"><label style="margin-top:0">New idea. Type, or tap the microphone on your keyboard and talk.</label>' +
+  return vDashCard() + '<div class="card"><label style="margin-top:0">New idea. Type, or tap the microphone on your keyboard and talk.</label>' +
     '<textarea id="idea" placeholder="What did you notice, learn or get wrong? Rough is fine. You can also tell Claude what to research, for example find what is happening in India."></textarea>' +
     '<label>Build on an earlier short post (optional)</label><select id="buildon">' + opts + '</select>' +
     '<div class="row" style="margin-top:14px"><button class="btn" id="save">Start short post</button><button class="btn ghost" onclick="startScout()"' + (scoutBusy() ? ' disabled' : '') + '>' + (scoutBusy() ? 'Finding topics...' : 'Suggest 5 topics') + '</button></div></div>' +
     vScout() +
     '<h2>Recent short posts</h2><div class="card">' + (recent || '<div class="empty"><img src="mascot.png" alt=""><div>No short posts yet. The albatross is waiting.</div></div>') + '</div>';
+}
+const fmtN = n => Number(n || 0).toLocaleString('en-US');
+const monthName = ym => { const [y, m] = String(ym).split('-'); return new Date(+y, +m - 1, 1).toLocaleDateString('en-US', {month: 'long', year: 'numeric'}); };
+const weeksTxt = n => n + (n === 1 ? ' week' : ' weeks');
+function vDashCard(){
+  const st = DD.stats(S.lib, S.pp), tile = (n, l) => '<div class="tile"><b>' + n + '</b><span>' + l + '</span></div>';
+  return '<div class="card dash tap" onclick="openReader({type:\'dash\'})"><div class="cheer">' + esc(DD.cheer(st)) + '</div>' +
+    '<div class="tiles">' + tile(st.total, 'posts out') + tile(weeksTxt(st.streak), 'streak') + tile(fmtN(st.words), 'words written') + '</div>' +
+    '<div class="tiny" style="text-align:right">Tap for the full Dashboard</div></div>';
+}
+function vDashboard(){
+  const st = DD.stats(S.lib, S.pp), tile = (n, l) => '<div class="tile"><b>' + n + '</b><span>' + l + '</span></div>';
+  let h = '<div class="row" style="margin-bottom:10px"><button class="btn sm ghost" onclick="history.back()">&larr; Back</button></div>';
+  h += '<div class="card dash"><h2 style="margin:0 0 6px">Your Dashboard</h2><div class="cheer">' + esc(DD.cheer(st)) + '</div>' +
+    (st.first ? '<div class="muted">Writing in public since ' + esc(new Date(DD.dayNo(st.first) * 86400000).toLocaleDateString('en-US', {day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC'})) + '</div>' : '') + '</div>';
+  h += '<h2>Posts out</h2><div class="tiles">' + tile(st.total, 'all time') + tile(st.month, 'this month') + tile(st.week, 'this week') + tile(st.long, 'long posts') + tile(st.short, 'short posts') + tile(st.open, 'in progress') + '</div>';
+  h += '<h2>Streak</h2><div class="tiles">' + tile(weeksTxt(st.streak), 'current streak') + tile(weeksTxt(st.longestStreak), 'longest streak') + tile(st.best ? st.best.n : 0, st.best ? 'best month, ' + esc(monthName(st.best.month)) : 'best month') + '</div>' +
+    '<div class="muted" style="margin-top:6px">A week counts when at least one post goes out, Monday to Sunday.' + (st.streak && !st.streakAlive ? ' Post this week to keep it alive.' : '') + '</div>';
+  h += '<h2>Words written</h2><div class="tiles">' + tile(fmtN(st.words), 'all time') + tile(fmtN(st.wordsMonth), 'this month') + tile(st.total ? fmtN(Math.round(st.words / st.total)) : 0, 'per post, average') + '</div>' +
+    '<div class="muted" style="margin-top:6px">Counts the post itself, not the LinkedIn version.</div>';
+  h += '<h2>Milestones</h2><div class="card">' + (st.badges.length ? st.badges.map(b => '<span class="bdg">&#10003; ' + esc(b) + '</span>').join('') : '<div class="muted">Your first one is a single post away.</div>') +
+    '<div class="muted" style="margin-top:6px">' + (st.nextPosts ? 'Next, ' + st.nextPosts.target + (st.nextPosts.target === 1 ? ' post, ' : ' posts, ') + st.nextPosts.left + ' to go. ' : '') + (st.nextWords ? 'Then ' + fmtN(st.nextWords.target) + ' words, ' + fmtN(st.nextWords.left) + ' to go.' : '') + '</div></div>';
+  return h;
 }
 function sortedLib(){ return S.lib.slice().sort((x, y) => String(y.date).localeCompare(String(x.date))); }
 function vLibrary(){
@@ -302,6 +332,7 @@ function vLibrary(){
 function vReader(){
   const r = S.reader;
   if(r.type === 'post') return vPost(r);
+  if(r.type === 'dash') return vDashboard();
   let h = '<div class="row" style="margin-bottom:10px"><button class="btn sm ghost" onclick="history.back()">&larr; Back</button></div>';
   const it = r.item; if(!it.files.linkedin) r.mode = 'article';
   const path = r.mode === 'article' ? it.files.article : it.files.linkedin, doc = S.docs[path];
@@ -317,7 +348,7 @@ function activeTab(){
   const r = S.reader;
   if(!r) return S.tab;
   if(r.type === 'post'){ const p = S.pp[r.slug]; return p && p.track === 'short' ? 'short' : 'long'; }
-  return 'library';
+  return r.type === 'dash' ? 'capture' : 'library';
 }
 function render(){
   const main = $('main'), nav = $('nav');
@@ -359,7 +390,7 @@ $('refresh').onclick = () => load();
 $('mascot').onclick = () => { if(S.conn) disconnect(); };
 /* Self-update. APP_V must match the shell-vN number in sw.js, both are bumped together on every release.
    If the server has a newer release than the one running, reload so a phone never keeps an old copy. */
-const APP_V = 16;
+const APP_V = 17;
 async function checkUpdate(){
   try{
     const t = await (await fetch('sw.js?x=' + Date.now(), {cache: 'no-store'})).text();
